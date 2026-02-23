@@ -1,426 +1,1021 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Borç Defteri Pro</title>
-    
-    <!-- Kütüphaneler -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-        
-        :root {
-            --sat: env(safe-area-inset-top, 0px);
-            --sab: env(safe-area-inset-bottom, 0px);
-            --indigo-600: #4f46e5;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 
-        html, body {
-            height: 100dvh;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background-color: #f8fafc;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            -webkit-tap-highlight-color: transparent;
-            overscroll-behavior: none;
-        }
+  <!-- PWA / Mobil -->
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Borç Defteri" />
+  <title>Borç Defteri</title>
 
-        #root { height: 100dvh; }
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
 
-        /* ANDROID SHELL MİMARİSİ: Çakışmaları %100 önler */
-        .app-shell {
-            display: grid;
-            grid-template-rows: calc(64px + var(--sat)) 1fr calc(80px + var(--sab));
-            height: 100dvh;
-            width: 100%;
-            background: white;
-            position: relative;
-        }
-
-        .scroll-area {
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-            padding: 16px;
-            background-color: #f8fafc;
-        }
-
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        
-        input, select { font-size: 16px !important; }
-        
-        .btn-active:active {
-            transform: scale(0.96);
-            opacity: 0.9;
-        }
-
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
-            color: #94a3b8;
-            transition: all 0.3s ease;
-        }
-
-        .nav-item.active {
-            color: #4f46e5;
-        }
-
-        .nav-indicator {
-            height: 32px;
-            width: 64px;
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s ease;
-        }
-
-        .nav-item.active .nav-indicator {
-            background-color: #e0e7ff;
-        }
-
-        .fade-in { animation: fadeIn 0.25s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* Silme onayı modalı için özel stil */
-        .modal-backdrop {
-            background-color: rgba(15, 23, 42, 0.85);
-            backdrop-filter: blur(4px);
-        }
-    </style>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    :root { --sat-height: env(safe-area-inset-top); --sab-height: env(safe-area-inset-bottom); }
+    html, body {
+      height: 100dvh;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: #f8fafc;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    #root { height: 100dvh; }
+    .app-shell{
+      display:grid;
+      grid-template-rows:64px 1fr 80px;
+      height:100dvh;
+      width:100%;
+      max-width:500px;
+      margin:0 auto;
+      background:white;
+      position:relative;
+    }
+    .scroll-area{ overflow-y:auto; -webkit-overflow-scrolling:touch; }
+    .no-scrollbar::-webkit-scrollbar{ display:none; }
+    input, select { font-size:16px !important; }
+    .icon-box{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:24px;
+      height:24px;
+    }
+    .tab-active{ color:#4f46e5; position:relative; }
+    .tab-active::after{
+      content:'';
+      position:absolute;
+      bottom:-10px; left:50%;
+      transform:translateX(-50%);
+      width:4px; height:4px;
+      background:#4f46e5;
+      border-radius:50%;
+    }
+  </style>
 </head>
+
 <body>
-    <div id="root"></div>
+<div id="root"></div>
 
-    <script type="text/babel">
-        const { useState, useEffect, useMemo, useRef } = React;
+<script type="text/babel">
+  const { useState, useEffect, useMemo, useRef } = React;
 
-        const Icon = ({ name, size = 24, className = "" }) => {
-            const wrapperRef = useRef(null);
-            useEffect(() => {
-                if (window.lucide && wrapperRef.current) {
-                    wrapperRef.current.innerHTML = `<i data-lucide="${name}"></i>`;
-                    window.lucide.createIcons({
-                        attrs: { size, class: className },
-                        nameAttr: 'data-lucide'
-                    });
-                }
-            }, [name, size, className]);
-            return <span ref={wrapperRef} className="inline-flex items-center justify-center"></span>;
-        };
+  // Lucide wrapper
+  const Icon = ({ name, size = 24, className = "" }) => {
+    const wrapperRef = useRef(null);
+    useEffect(() => {
+      if (window.lucide && wrapperRef.current) {
+        wrapperRef.current.innerHTML = `<i data-lucide="${name}"></i>`;
+        window.lucide.createIcons({
+          attrs: { size, class: className },
+          nameAttr: 'data-lucide'
+        });
+      }
+    }, [name, size, className]);
+    return <span ref={wrapperRef} className="icon-box"></span>;
+  };
 
-        const INITIAL_VETS = ["Abdullah Yelekçi", "Adil Aygün", "Ahmet Arıcı", "Sinan Koç", "Yusuf Kara"];
-        const INITIAL_PRODS = [
-            { id: 1, name: 'ALM', stock: 0 },
-            { id: 2, name: 'AROW', stock: 0 },
-            { id: 3, name: 'ASTOR', stock: 0 },
-            { id: 4, name: 'BARON', stock: 0 }
-        ];
+  // Defaults
+  const INITIAL_PRODUCTS = [
+    { id: 1, name: 'ALM', stock: 0 },
+    { id: 2, name: 'AROW', stock: 0 },
+    { id: 3, name: 'ASTOR', stock: 0 },
+    { id: 4, name: 'BARON', stock: 0 }
+  ];
 
-        const App = () => {
-            const [activeTab, setActiveTab] = useState('home');
-            const [selectedVet, setSelectedVet] = useState(null);
-            const [searchQuery, setSearchQuery] = useState('');
-            const [showAddForm, setShowAddForm] = useState(false);
-            const [showQuickAdd, setShowQuickAdd] = useState(null);
-            const [editingItem, setEditingItem] = useState(null); // { type: 'vet', oldName: string }
-            const [deleteConfirm, setDeleteConfirm] = useState(null); // { type: 'vet', name: string }
-            
-            const [vets, setVets] = useState(() => JSON.parse(localStorage.getItem('v_apk_v13_vets')) || INITIAL_VETS);
-            const [products, setProducts] = useState(() => JSON.parse(localStorage.getItem('v_apk_v13_prods')) || INITIAL_PRODS);
-            const [transactions, setTransactions] = useState(() => JSON.parse(localStorage.getItem('v_apk_v13_trans')) || []);
+  const INITIAL_VETS_LEGACY = ["Abdullah Yelekçi", "Adil Aygün", "Ahmet Arıcı", "Sinan Koç", "Yusuf Kara"];
 
-            useEffect(() => {
-                localStorage.setItem('v_apk_v13_vets', JSON.stringify(vets));
-                localStorage.setItem('v_apk_v13_prods', JSON.stringify(products));
-                localStorage.setItem('v_apk_v13_trans', JSON.stringify(transactions));
-            }, [vets, products, transactions]);
+  // Helpers
+  const normalizeName = (s) => (s || '').trim().toUpperCase();
+  const formatPhone = (s) => (s || '').trim();
+  const uid = () => Date.now() + Math.floor(Math.random() * 1000);
 
-            const [formVet, setFormVet] = useState('');
-            const [formProduct, setFormProduct] = useState('');
-            const [formQty, setFormQty] = useState('');
-            const [formType, setFormType] = useState('borclanma');
-            const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
-            const [newNameInput, setNewNameInput] = useState('');
+  // Migrate legacy vets (string[]) -> object[]
+  const migrateVets = (rawVets) => {
+    if (!rawVets) return null;
+    if (Array.isArray(rawVets) && rawVets.length > 0) {
+      if (typeof rawVets[0] === 'string') {
+        return rawVets
+          .filter(Boolean)
+          .map(v => ({ id: uid(), name: normalizeName(v), phone: '', limit: 0 }));
+      }
+      if (typeof rawVets[0] === 'object' && rawVets[0] !== null) {
+        // ensure fields
+        return rawVets.map(v => ({
+          id: v.id ?? uid(),
+          name: normalizeName(v.name ?? ''),
+          phone: formatPhone(v.phone ?? ''),
+          limit: Number(v.limit ?? 0) || 0
+        })).filter(v => v.name);
+      }
+    }
+    return null;
+  };
 
-            // Müşteri Analizi
-            const vetStats = useMemo(() => {
-                const map = {};
-                vets.forEach(v => map[v] = { balance: 0, items: {}, history: [] });
-                transactions.forEach(t => {
-                    if (map[t.vet]) {
-                        map[t.vet].balance += t.qty;
-                        map[t.vet].items[t.product] = (map[t.vet].items[t.product] || 0) + t.qty;
-                        map[t.vet].history.push(t);
-                    }
-                });
-                return map;
-            }, [transactions, vets]);
+  const App = () => {
+    const [activeTab, setActiveTab] = useState('home');
 
-            const handleTransaction = () => {
-                if (!formVet || !formProduct || !formQty) return;
-                const qty = parseInt(formQty);
-                const finalQty = formType === 'borclanma' ? qty : -qty;
+    // selected
+    const [selectedVetId, setSelectedVetId] = useState(null);
+    const [selectedProduct, setSelectedProduct] = useState(null);
 
-                setTransactions([...transactions, { 
-                    id: Date.now(), vet: formVet, product: formProduct, qty: finalQty, date: formDate, type: formType 
-                }]);
-                
-                setProducts(products.map(p => 
-                    p.name === formProduct ? { ...p, stock: formType === 'borclanma' ? p.stock - qty : p.stock + qty } : p
-                ));
-                
-                setShowAddForm(false);
-                setFormQty('');
-            };
+    // UI
+    const [showAddForm, setShowAddForm] = useState(false);
+    const [showQuickAdd, setShowQuickAdd] = useState(null); // 'vet'|'product'
+    const [searchQuery, setSearchQuery] = useState('');
+    const [vetSearch, setVetSearch] = useState('');
 
-            // Müşteri İsmi Güncelleme
-            const renameVet = (oldName, newName) => {
-                const cleanNewName = newName.trim().toUpperCase();
-                if (!cleanNewName || vets.includes(cleanNewName)) return;
+    // Menus / Modals
+    const [openVetMenuId, setOpenVetMenuId] = useState(null);
+    const [editingVetId, setEditingVetId] = useState(null);
+    const [editVetName, setEditVetName] = useState('');
+    const [editVetPhone, setEditVetPhone] = useState('');
+    const [editVetLimit, setEditVetLimit] = useState('');
 
-                // Müşteri listesini güncelle
-                setVets(vets.map(v => v === oldName ? cleanNewName : v));
+    const fileInputRef = useRef(null);
 
-                // Tüm işlem geçmişini yeni isme aktar
-                setTransactions(transactions.map(t => t.vet === oldName ? { ...t, vet: cleanNewName } : t));
-                
-                setEditingItem(null);
-                setNewNameInput('');
-            };
+    // Storage keys
+    const KEY_VETS = 'v_vets_v6';
+    const KEY_PRODS = 'v_prods_v6';
+    const KEY_TRANS = 'v_trans_v6';
 
-            // Müşteri Silme
-            const deleteVet = (name) => {
-                setVets(vets.filter(v => v !== name));
-                // İşlem geçmişi korunabilir veya silinebilir, burada listeden kalkması yeterli
-                setDeleteConfirm(null);
-            };
+    // Load
+    const [vets, setVets] = useState(() => {
+      const stored = JSON.parse(localStorage.getItem(KEY_VETS));
+      const migrated = migrateVets(stored);
+      if (migrated) return migrated;
 
-            const changeView = (tab) => {
-                setSelectedVet(null);
-                setActiveTab(tab);
-            };
+      // fallback legacy v5 key if exists
+      const legacy = JSON.parse(localStorage.getItem('v_vets_v5'));
+      const migratedLegacy = migrateVets(legacy);
+      if (migratedLegacy) return migratedLegacy;
 
-            return (
-                <div className="app-shell">
-                    {/* ÜST PANEL */}
-                    <header className="bg-indigo-700 text-white flex items-center justify-between px-5 pt-[var(--sat)] shadow-md z-40">
-                        <div className="flex items-center gap-4 overflow-hidden">
-                            {(selectedVet || activeTab !== 'home') ? (
-                                <button onClick={() => { setSelectedVet(null); if(!selectedVet) setActiveTab('home'); }} className="p-2 btn-active">
-                                    <Icon name="arrow-left" size={24} />
-                                </button>
-                            ) : (
-                                <Icon name="layout-grid" size={24} />
-                            )}
-                            <h1 className="text-xl font-bold truncate tracking-tight uppercase">
-                                {selectedVet || (activeTab === 'settings' ? 'Sistem' : activeTab === 'vets' ? 'Müşteriler' : activeTab === 'stock' ? 'Depo' : 'Borç Defteri')}
-                            </h1>
-                        </div>
-                        <button onClick={() => changeView('settings')} className="p-2 btn-active opacity-80"><Icon name="database" size={20}/></button>
-                    </header>
+      // default
+      return migrateVets(INITIAL_VETS_LEGACY);
+    });
 
-                    {/* ANA İÇERİK */}
-                    <main className="scroll-area no-scrollbar">
-                        {activeTab === 'settings' ? (
-                            <div className="space-y-4 fade-in">
-                                <div className="p-6 bg-white rounded-[2rem] border border-slate-100 shadow-sm space-y-4 text-center">
-                                    <h3 className="font-bold text-slate-800 text-sm uppercase tracking-widest px-1">Veri Yönetimi</h3>
-                                    <button onClick={() => {
-                                        const blob = new Blob([JSON.stringify({vets, products, transactions})], {type: 'application/json'});
-                                        const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `yedek.json`; link.click();
-                                    }} className="w-full flex items-center justify-between p-5 bg-indigo-50 rounded-3xl font-bold text-indigo-700 btn-active">
-                                        <div className="flex items-center gap-3"><Icon name="download" /> Yedek İndir</div><Icon name="chevron-right" size={16}/>
-                                    </button>
-                                    <button onClick={() => {if(confirm('HER ŞEY SİLİNECEK!')) {localStorage.clear(); window.location.reload();}}} className="w-full p-4 bg-rose-50 text-rose-600 rounded-2xl font-bold flex items-center justify-center gap-3 mt-4 btn-active"><Icon name="trash-2" /> Sistemi Sıfırla</button>
-                                </div>
-                            </div>
-                        ) : selectedVet ? (
-                            <div className="space-y-6 fade-in pb-10">
-                                <div className="p-8 bg-indigo-600 rounded-[2.5rem] text-center text-white shadow-xl relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
-                                    <h2 className="text-2xl font-black uppercase tracking-tight">{selectedVet}</h2>
-                                    <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest mt-6">Toplam Borç Bakiyesi</p>
-                                    <p className="text-6xl font-black mt-1 leading-none">
-                                        {vetStats[selectedVet]?.balance > 0 ? `+${vetStats[selectedVet].balance}` : vetStats[selectedVet]?.balance || 0}
-                                    </p>
-                                </div>
+    const [products, setProducts] = useState(() => {
+      const stored = JSON.parse(localStorage.getItem(KEY_PRODS));
+      if (stored && Array.isArray(stored)) return stored;
+      const legacy = JSON.parse(localStorage.getItem('v_prods_v5'));
+      if (legacy && Array.isArray(legacy)) return legacy;
+      return INITIAL_PRODUCTS;
+    });
 
-                                <div className="space-y-3">
-                                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 flex items-center gap-2"><Icon name="box" size={14}/> Borç Dağılımı</h3>
-                                    {Object.entries(vetStats[selectedVet]?.items || {}).filter(([_,v])=>v!==0).map(([name, bal]) => (
-                                        <div key={name} className="flex justify-between p-5 bg-white border border-slate-100 rounded-[1.5rem] shadow-sm">
-                                            <span className="font-bold text-slate-700 uppercase text-sm">{name}</span>
-                                            <span className={`font-black ${bal > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{bal > 0 ? `+${bal}` : bal}</span>
-                                        </div>
-                                    ))}
-                                </div>
+    const [transactions, setTransactions] = useState(() => {
+      const stored = JSON.parse(localStorage.getItem(KEY_TRANS));
+      if (stored && Array.isArray(stored)) return stored;
+      const legacy = JSON.parse(localStorage.getItem('v_trans_v5'));
+      if (legacy && Array.isArray(legacy)) return legacy;
+      return [];
+    });
 
-                                <div className="space-y-2">
-                                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 flex items-center gap-2"><Icon name="history" size={14}/> İşlem Geçmişi</h3>
-                                    {[...(vetStats[selectedVet]?.history || [])].reverse().map(t => (
-                                        <div key={t.id} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
-                                            <div className="flex items-center gap-3 text-left overflow-hidden">
-                                                <div className={`p-2 rounded-xl shrink-0 ${t.qty > 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}><Icon name={t.qty > 0 ? "arrow-up-right" : "arrow-down-left"} size={18}/></div>
-                                                <div className="overflow-hidden">
-                                                    <p className="text-sm font-bold text-slate-800 uppercase truncate">{t.product}</p>
-                                                    <p className="text-[10px] text-slate-400 font-bold">{t.date}</p>
-                                                </div>
-                                            </div>
-                                            <span className={`font-black text-lg ${t.qty > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{t.qty > 0 ? `+${t.qty}` : t.qty}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="space-y-6 fade-in pb-4">
-                                {activeTab === 'home' && (
-                                    <div className="space-y-6">
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div onClick={() => changeView('stock')} className="p-6 bg-slate-900 rounded-[2.2rem] text-white shadow-lg btn-active"><Icon name="package" className="opacity-40 mb-2" /><p className="text-[10px] font-bold opacity-60 uppercase mb-1">DEPO</p><p className="text-3xl font-black">{products.reduce((a,b)=>a+b.stock,0)}</p></div>
-                                            <div onClick={() => changeView('vets')} className="p-6 bg-indigo-600 rounded-[2.2rem] text-white shadow-lg btn-active text-center"><Icon name="users" className="opacity-40 mb-2" /><p className="text-[10px] font-bold opacity-60 uppercase mb-1">MÜŞTERİ</p><p className="text-3xl font-black">{vets.length}</p></div>
-                                        </div>
-                                        <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
-                                            <h2 className="font-extrabold text-slate-800 text-lg mb-6 flex items-center gap-2"><Icon name="alert-circle" size={18} className="text-rose-500"/> Borçlular</h2>
-                                            <div className="space-y-3">
-                                                {vets.map(v => ({ name: v, bal: vetStats[v]?.balance || 0 })).filter(v => v.bal > 0).sort((a,b)=>b.bal-a.bal).slice(0,5).map((v) => (
-                                                    <div key={v.name} onClick={() => setSelectedVet(v.name)} className="flex justify-between items-center bg-slate-50 p-5 rounded-2xl border border-slate-100/50 btn-active">
-                                                        <span className="font-bold text-slate-700 uppercase text-sm">{v.name}</span><div className="bg-rose-50 px-4 py-1 rounded-full"><span className="font-black text-rose-600">+{v.bal}</span></div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <button onClick={() => setShowAddForm(true)} className="w-full bg-slate-900 text-white p-6 rounded-[2rem] flex items-center justify-center gap-4 shadow-xl btn-active"><Icon name="plus-circle" /><span className="font-black text-lg uppercase tracking-widest">YENİ İŞLEM GİR</span></button>
-                                    </div>
-                                )}
-                                {activeTab === 'stock' && (
-                                    <div className="space-y-4">
-                                        <button onClick={() => setShowQuickAdd('product')} className="w-full p-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold flex items-center justify-center gap-2 btn-active"><Icon name="plus" /> Yeni Ürün</button>
-                                        {products.map(p => (
-                                            <div key={p.id} className="p-5 bg-white rounded-[1.5rem] flex items-center justify-between border border-slate-100 shadow-sm active:bg-slate-50 btn-active">
-                                                <div className="flex items-center gap-4 text-left flex-1"><div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-xs uppercase shrink-0">{p.name[0]}</div><p className="font-bold text-slate-800 uppercase truncate">{p.name}</p></div>
-                                                <div className="flex items-center gap-4"><p className="text-2xl font-black text-indigo-600">{p.stock}</p></div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                                {activeTab === 'vets' && (
-                                    <div className="space-y-3">
-                                        <button onClick={() => setShowQuickAdd('vet')} className="w-full p-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold flex items-center justify-center gap-2 btn-active"><Icon name="user-plus" /> Yeni Müşteri Ekle</button>
-                                        {vets.map(v => (
-                                            <div key={v} className="p-5 bg-white rounded-[1.5rem] flex items-center justify-between border border-slate-100 shadow-sm btn-active">
-                                                <div onClick={() => setSelectedVet(v)} className="flex items-center gap-4 text-left flex-1"><div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold uppercase shrink-0">{v[0]}</div><p className="font-bold text-slate-800 truncate uppercase">{v}</p></div>
-                                                <div className="flex items-center gap-2">
-                                                    <button onClick={() => { setEditingItem({ type: 'vet', oldName: v }); setNewNameInput(v); }} className="p-2 text-indigo-600 bg-indigo-50 rounded-xl"><Icon name="edit-2" size={16}/></button>
-                                                    <button onClick={() => setDeleteConfirm({ type: 'vet', name: v })} className="p-2 text-rose-600 bg-rose-50 rounded-xl"><Icon name="trash-2" size={16}/></button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                                {activeTab === 'history' && (
-                                    <div className="space-y-3">
-                                        {transactions.slice().reverse().map(t => (
-                                            <div key={t.id} className="bg-white p-4 rounded-[1.5rem] border border-slate-100 flex items-center justify-between shadow-sm btn-active">
-                                                <div className="flex items-center gap-3 overflow-hidden text-left">
-                                                    <div className={`p-2 rounded-xl shrink-0 ${t.qty > 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}><Icon name={t.qty > 0 ? "arrow-up-right" : "arrow-down-left"} size={18}/></div>
-                                                    <div className="overflow-hidden">
-                                                        <p className="text-sm font-bold text-slate-900 truncate uppercase">{t.vet}</p>
-                                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{t.product} • {t.date}</p>
-                                                    </div>
-                                                </div>
-                                                <span className={`font-black text-lg ${t.qty > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{t.qty > 0 ? `+${t.qty}` : t.qty}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </main>
+    // Persist
+    useEffect(() => {
+      localStorage.setItem(KEY_VETS, JSON.stringify(vets));
+      localStorage.setItem(KEY_PRODS, JSON.stringify(products));
+      localStorage.setItem(KEY_TRANS, JSON.stringify(transactions));
+    }, [vets, products, transactions]);
 
-                    {/* ALT MENÜ */}
-                    <nav className="bg-white border-t border-slate-100 flex justify-around items-center px-4 pb-[calc(10px+var(--sab))] z-50 shadow-[0_-8px_20px_rgba(0,0,0,0.04)] h-[80px]">
-                        <button onClick={() => changeView('home')} className={`nav-item flex-1 ${activeTab === 'home' && !selectedVet ? 'active' : ''}`}><div className="nav-indicator"><Icon name="home" /></div><span className="text-[10px] font-bold">Panel</span></button>
-                        <button onClick={() => changeView('stock')} className={`nav-item flex-1 ${activeTab === 'stock' ? 'active' : ''}`}><div className="nav-indicator"><Icon name="package" /></div><span className="text-[10px] font-bold">Depo</span></button>
-                        <button onClick={() => changeView('vets')} className={`nav-item flex-1 ${activeTab === 'vets' ? 'active' : ''}`}><div className="nav-indicator"><Icon name="users" /></div><span className="text-[10px] font-bold">Müşteriler</span></button>
-                        <button onClick={() => changeView('history')} className={`nav-item flex-1 ${activeTab === 'history' ? 'active' : ''}`}><div className="nav-indicator"><Icon name="clipboard-list" /></div><span className="text-[10px] font-bold">İşlemler</span></button>
-                    </nav>
+    // Click outside to close vet menu
+    useEffect(() => {
+      const onDoc = () => setOpenVetMenuId(null);
+      document.addEventListener('click', onDoc);
+      return () => document.removeEventListener('click', onDoc);
+    }, []);
 
-                    {/* MODAL: YENİ KAYIT */}
-                    {showAddForm && (
-                        <div className="fixed inset-0 bg-slate-900/80 z-[100] flex items-end backdrop-blur-sm p-0 m-0">
-                            <div className="bg-white w-full rounded-t-[3rem] p-8 shadow-2xl animate-in slide-in-from-bottom max-h-[95dvh] overflow-y-auto pb-[calc(20px+var(--sab))] no-scrollbar">
-                                <div className="w-16 h-1.5 bg-slate-100 rounded-full mx-auto mb-8"></div>
-                                <h3 className="text-2xl font-black text-slate-800 mb-8 flex items-center gap-3 uppercase tracking-tight text-center justify-center"><Icon name="edit-3" className="text-indigo-600"/> Cari İşlem Gir</h3>
-                                <div className="space-y-5">
-                                    <div className="space-y-1 text-left"><label className="text-[10px] font-bold text-slate-400 uppercase ml-3">Tarih</label><input type="date" className="w-full p-5 bg-slate-50 border-none rounded-[1.5rem] font-bold outline-none text-center shadow-inner" value={formDate} onChange={e => setFormDate(e.target.value)} /></div>
-                                    <div className="space-y-1 text-left"><label className="text-[10px] font-bold text-slate-400 uppercase ml-3">Müşteri</label><select className="w-full p-5 bg-slate-50 border-none rounded-[1.5rem] font-bold outline-none appearance-none shadow-inner" value={formVet} onChange={e => setFormVet(e.target.value)}><option value="">Seçiniz</option>{vets.map((v) => <option key={v} value={v}>{v}</option>)}</select></div>
-                                    <div className="space-y-1 text-left"><label className="text-[10px] font-bold text-slate-400 uppercase ml-3">Ürün</label><select className="w-full p-5 bg-slate-50 border-none rounded-[1.5rem] font-bold outline-none appearance-none shadow-inner" value={formProduct} onChange={e => setFormProduct(e.target.value)}><option value="">Seçiniz</option>{products.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}</select></div>
-                                    <div className="grid grid-cols-2 gap-4"><div className="space-y-1 text-left"><label className="text-[10px] font-bold text-slate-400 uppercase ml-3">Miktar</label><input type="number" className="w-full p-5 bg-slate-50 border-none rounded-[1.5rem] font-black text-center shadow-inner" placeholder="0" value={formQty} onChange={e => setFormQty(e.target.value)}/></div><div className="space-y-1 text-left"><label className="text-[10px] font-bold text-slate-400 uppercase ml-3">Tür</label><select className="w-full p-5 bg-slate-100 border-none rounded-[1.5rem] font-bold text-indigo-600 text-center shadow-inner appearance-none" value={formType} onChange={e => setFormType(e.target.value)}><option value="borclanma">BORÇLANMA (+)</option><option value="odeme">ÖDEME (-)</option></select></div></div>
-                                    <div className="flex gap-4 pt-6 pb-4"><button onClick={() => setShowAddForm(false)} className="flex-1 bg-slate-50 p-5 rounded-[1.5rem] font-bold text-slate-400 btn-active uppercase text-sm">İptal</button><button onClick={handleTransaction} className="flex-[2] bg-indigo-600 text-white p-5 rounded-[1.5rem] font-black shadow-xl btn-active uppercase">Kaydet</button></div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+    // Form state (transaction)
+    const [formVetId, setFormVetId] = useState('');
+    const [formProduct, setFormProduct] = useState('');
+    const [formQty, setFormQty] = useState('');
+    const [formType, setFormType] = useState('borclanma');
+    const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
 
-                    {/* MODAL: HIZLI EKLEME / DÜZENLEME */}
-                    {(showQuickAdd || editingItem) && (
-                        <div className="fixed inset-0 bg-slate-900/80 z-[110] flex items-center justify-center p-6 backdrop-blur-sm">
-                            <div className="bg-white w-full rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in">
-                                <h3 className="text-xl font-black mb-6 text-slate-800 uppercase tracking-tight text-center">
-                                    {editingItem ? 'İsim Düzenle' : (showQuickAdd === 'vet' ? 'Yeni Müşteri' : 'Yeni Ürün')}
-                                </h3>
-                                <input type="text" className="w-full p-5 bg-slate-50 border-none rounded-[1.5rem] mb-8 font-bold outline-none uppercase shadow-inner focus:ring-4 focus:ring-indigo-500/10 transition-all" placeholder="İsim giriniz..." value={newNameInput} onChange={e => setNewNameInput(e.target.value)}/>
-                                <div className="flex gap-3">
-                                    <button onClick={() => {setShowQuickAdd(null); setEditingItem(null); setNewNameInput('');}} className="flex-1 py-4 bg-slate-50 rounded-2xl font-bold text-slate-400 btn-active text-sm uppercase">Vazgeç</button>
-                                    <button onClick={() => {
-                                        if(!newNameInput.trim()) return;
-                                        if(editingItem) {
-                                            renameVet(editingItem.oldName, newNameInput);
-                                        } else {
-                                            const cleanName = newNameInput.trim().toUpperCase();
-                                            if(showQuickAdd === 'vet') {
-                                                if(!vets.includes(cleanName)) setVets([...vets, cleanName]);
-                                            } else {
-                                                if(!products.some(p => p.name === cleanName)) setProducts([...products, { id: Date.now(), name: cleanName, stock: 0 }]);
-                                            }
-                                            setShowQuickAdd(null); setNewNameInput('');
-                                        }
-                                    }} className="flex-[2] py-4 bg-indigo-700 text-white rounded-2xl font-black shadow-lg btn-active uppercase text-sm">Onayla</button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+    // Quick Add state
+    const [newNameInput, setNewNameInput] = useState('');
+    const [newPhoneInput, setNewPhoneInput] = useState('');
+    const [newLimitInput, setNewLimitInput] = useState('');
 
-                    {/* MODAL: SİLME ONAYI */}
-                    {deleteConfirm && (
-                        <div className="fixed inset-0 modal-backdrop z-[120] flex items-center justify-center p-6">
-                            <div className="bg-white w-full rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in">
-                                <div className="text-rose-600 bg-rose-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6"><Icon name="trash-2" size={32}/></div>
-                                <h3 className="text-xl font-black mb-2 text-slate-800 text-center">Emin misiniz?</h3>
-                                <p className="text-slate-500 text-center text-sm mb-8"><b>{deleteConfirm.name}</b> isimli müşteri listeden kaldırılacaktır.</p>
-                                <div className="flex gap-3">
-                                    <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-4 bg-slate-50 rounded-2xl font-bold text-slate-400 btn-active text-sm uppercase">Hayır</button>
-                                    <button onClick={() => deleteVet(deleteConfirm.name)} className="flex-1 py-4 bg-rose-600 text-white rounded-2xl font-black shadow-lg btn-active uppercase text-sm">Evet, Sil</button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+    const selectedVet = useMemo(() => vets.find(v => v.id === selectedVetId) || null, [vets, selectedVetId]);
+
+    // Stats by vetId
+    const stats = useMemo(() => {
+      const map = {};
+      vets.forEach(v => map[v.id] = { balance: 0, items: {} });
+      transactions.forEach(t => {
+        if (!map[t.vetId]) return;
+        map[t.vetId].balance += t.qty;
+        map[t.vetId].items[t.product] = (map[t.vetId].items[t.product] || 0) + t.qty;
+      });
+      return map;
+    }, [transactions, vets]);
+
+    const getVetStats = (vetId) => {
+      const vetTrans = transactions.filter(t => t.vetId === vetId);
+      const balance = vetTrans.reduce((acc, t) => acc + t.qty, 0);
+
+      const productBalances = {};
+      vetTrans.forEach(t => { productBalances[t.product] = (productBalances[t.product] || 0) + t.qty; });
+
+      const items = Object.keys(productBalances)
+        .map(name => ({ name, balance: productBalances[name] }))
+        .filter(i => i.balance !== 0);
+
+      return { balance, history: [...vetTrans].reverse(), productBalances: items };
+    };
+
+    const back = () => {
+      setSelectedVetId(null);
+      setSelectedProduct(null);
+      if (!selectedVetId && !selectedProduct) setActiveTab('home');
+    };
+
+    // Transaction handler
+    const handleTransaction = () => {
+      if (!formVetId || !formProduct || !formQty) return;
+      const qty = parseInt(formQty, 10);
+      if (!Number.isFinite(qty) || qty <= 0) return;
+
+      const finalQty = formType === 'borclanma' ? qty : -qty;
+
+      setTransactions([...transactions, {
+        id: uid(),
+        vetId: formVetId,
+        product: formProduct,
+        qty: finalQty,
+        date: formDate,
+        type: formType
+      }]);
+
+      setProducts(products.map(p =>
+        p.name === formProduct
+          ? { ...p, stock: formType === 'borclanma' ? p.stock - qty : p.stock + qty }
+          : p
+      ));
+
+      setShowAddForm(false);
+      setFormQty('');
+      setFormDate(new Date().toISOString().split('T')[0]);
+    };
+
+    // Vet actions
+    const openEditVet = (vetId) => {
+      const v = vets.find(x => x.id === vetId);
+      if (!v) return;
+      setEditingVetId(vetId);
+      setEditVetName(v.name);
+      setEditVetPhone(v.phone || '');
+      setEditVetLimit(String(v.limit || 0));
+    };
+
+    const saveVetEdit = () => {
+      const newName = normalizeName(editVetName);
+      const newPhone = formatPhone(editVetPhone);
+      const newLimit = Number(editVetLimit || 0) || 0;
+
+      if (!newName) return;
+
+      // Duplicate name check (allow same vet)
+      const dup = vets.some(v => v.id !== editingVetId && v.name === newName);
+      if (dup) { alert("Bu isimde başka bir müşteri var."); return; }
+
+      setVets(vets.map(v => v.id === editingVetId ? { ...v, name: newName, phone: newPhone, limit: newLimit } : v));
+      setEditingVetId(null);
+    };
+
+    const safeDeleteVet = (vetId) => {
+      const v = vets.find(x => x.id === vetId);
+      if (!v) return;
+
+      const bal = stats[vetId]?.balance || 0;
+      if (bal !== 0) {
+        alert("Bu müşterinin bakiyesi 0 değil. Önce bakiyeyi sıfırla veya işlemleri başka müşteriye aktar.");
+        return;
+      }
+
+      const hasTrans = transactions.some(t => t.vetId === vetId);
+      const msg = hasTrans
+        ? "Bu müşterinin geçmiş işlemleri var. Bakiyesi 0 ama geçmiş kayıtlar silinecek. Devam edilsin mi?"
+        : "Müşteriyi silmek istiyor musun?";
+
+      if (!confirm(msg)) return;
+
+      setVets(vets.filter(x => x.id !== vetId));
+      setTransactions(transactions.filter(t => t.vetId !== vetId));
+
+      if (selectedVetId === vetId) setSelectedVetId(null);
+      setOpenVetMenuId(null);
+    };
+
+    const transferTransactions = (fromVetId, toVetId) => {
+      if (!fromVetId || !toVetId || fromVetId === toVetId) return;
+      const from = vets.find(v => v.id === fromVetId);
+      const to = vets.find(v => v.id === toVetId);
+      if (!from || !to) return;
+
+      const count = transactions.filter(t => t.vetId === fromVetId).length;
+      if (count === 0) { alert("Aktarılacak işlem yok."); return; }
+
+      if (!confirm(`${from.name} müşterisine ait ${count} işlem, ${to.name} müşterisine aktarılacak. Devam?`)) return;
+
+      setTransactions(transactions.map(t => t.vetId === fromVetId ? { ...t, vetId: toVetId } : t));
+      alert("Aktarım tamamlandı.");
+    };
+
+    // Derived lists
+    const totalStock = products.reduce((a, b) => a + (b.stock || 0), 0);
+
+    const filteredVets = useMemo(() => {
+      const q = normalizeName(vetSearch);
+      if (!q) return vets;
+
+      return vets.filter(v => {
+        const name = v.name || '';
+        const phone = v.phone || '';
+        return name.includes(q) || phone.includes(vetSearch.trim());
+      });
+    }, [vets, vetSearch]);
+
+    const debtorsTop = useMemo(() => {
+      return vets
+        .map(v => ({ id: v.id, name: v.name, bal: stats[v.id]?.balance || 0, limit: v.limit || 0 }))
+        .filter(v => v.bal > 0)
+        .sort((a, b) => b.bal - a.bal)
+        .slice(0, 4);
+    }, [vets, stats]);
+
+    const riskBadge = (bal, limit) => {
+      if (!limit || limit <= 0) return { label: "LİMİT YOK", cls: "bg-slate-100 text-slate-500" };
+      const ratio = bal / limit; // bal>0 means debt
+      if (ratio >= 1) return { label: "RİSK: ÇOK YÜKSEK", cls: "bg-rose-100 text-rose-600" };
+      if (ratio >= 0.75) return { label: "RİSK: YÜKSEK", cls: "bg-orange-100 text-orange-600" };
+      if (ratio >= 0.5) return { label: "RİSK: ORTA", cls: "bg-amber-100 text-amber-700" };
+      return { label: "RİSK: DÜŞÜK", cls: "bg-emerald-100 text-emerald-700" };
+    };
+
+    return (
+      <div className="app-shell">
+
+        {/* Header */}
+        <header className="bg-white px-5 flex items-center justify-between border-b border-slate-100 z-50 h-16">
+          <div className="flex items-center gap-3 overflow-hidden">
+            {(selectedVetId || selectedProduct || activeTab !== 'home') && (
+              <button
+                onClick={() => { setSelectedVetId(null); setSelectedProduct(null); if (!selectedVetId && !selectedProduct) setActiveTab('home'); }}
+                className="p-2 active:bg-slate-50 rounded-full transition-all"
+              >
+                <Icon name="chevron-left" size={24} className="text-slate-600" />
+              </button>
+            )}
+            <div className="overflow-hidden">
+              <h1 className="text-lg font-extrabold text-slate-900 truncate tracking-tight">
+                {selectedVet ? selectedVet.name
+                  : (selectedProduct ? selectedProduct.name
+                    : activeTab === 'settings' ? 'Veri Yönetimi'
+                      : activeTab === 'vets' ? 'Müşteri Yönetimi'
+                        : activeTab === 'stock' ? 'Mevcut Durum'
+                          : activeTab === 'history' ? 'İşlem Geçmişi'
+                            : 'Borç Defteri')}
+              </h1>
+            </div>
+          </div>
+
+          <button
+            onClick={() => { setActiveTab('settings'); setSelectedVetId(null); setSelectedProduct(null); }}
+            className={`p-2 transition-all ${activeTab === 'settings' ? 'text-indigo-600' : 'text-slate-400'}`}
+          >
+            <Icon name="database" size={20} />
+          </button>
+        </header>
+
+        {/* Main */}
+        <main className="scroll-area no-scrollbar p-5 bg-white">
+          {/* SETTINGS */}
+          {activeTab === 'settings' && !selectedVetId && !selectedProduct && (
+            <div className="space-y-4 animate-in fade-in">
+              <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-4 shadow-sm">
+                <h3 className="font-bold text-slate-800 px-1">Yedekleme / Geri Yükleme</h3>
+
+                <button
+                  onClick={() => {
+                    const data = { vets, products, transactions };
+                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `defter_yedek.json`;
+                    link.click();
+                  }}
+                  className="w-full flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-200 font-bold active:bg-slate-50 transition-all text-indigo-600"
+                >
+                  <div className="flex items-center gap-3"><Icon name="download" size={20} /> Yedek Al</div>
+                  <Icon name="chevron-right" size={16} className="text-slate-300" />
+                </button>
+
+                <button
+                  onClick={() => fileInputRef.current.click()}
+                  className="w-full flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-200 font-bold active:bg-slate-50 transition-all text-emerald-600"
+                >
+                  <div className="flex items-center gap-3"><Icon name="upload" size={20} /> Yedekten Yükle</div>
+                  <Icon name="chevron-right" size={16} className="text-slate-300" />
+                </button>
+
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                      try {
+                        const content = JSON.parse(event.target.result);
+                        if (content.vets && content.products && content.transactions) {
+                          setVets(migrateVets(content.vets) || migrateVets(INITIAL_VETS_LEGACY));
+                          setProducts(content.products);
+                          setTransactions(content.transactions);
+                          alert("Geri yükleme başarılı!");
+                        } else {
+                          alert("Dosya formatı hatalı!");
+                        }
+                      } catch (err) { alert("Hatalı dosya!"); }
+                    };
+                    reader.readAsText(file);
+                  }}
+                  className="hidden"
+                  accept=".json"
+                />
+
+                <div className="pt-2 text-xs font-bold text-slate-400">
+                  * Bu sürüm müşteri yapısını (id, isim, tel, limit) destekler. Eski sürüm verileri otomatik uyarlanır.
                 </div>
-            );
-        };
+              </div>
+            </div>
+          )}
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
+          {/* VET DETAILS */}
+          {selectedVet && (
+            <div className="space-y-6 animate-in slide-in-from-right pb-10">
+              <div className="p-8 bg-indigo-600 rounded-[2.5rem] text-center text-white shadow-xl relative overflow-hidden">
+                <div className="flex items-center justify-between">
+                  <div className="text-left">
+                    <h2 className="text-2xl font-black">{selectedVet.name}</h2>
+                    <p className="text-xs font-bold opacity-80 mt-1">
+                      {selectedVet.phone ? `Tel: ${selectedVet.phone}` : "Tel: -"}
+                      {" • "}
+                      {selectedVet.limit ? `Limit: ${selectedVet.limit}` : "Limit: -"}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => openEditVet(selectedVet.id)}
+                    className="p-3 bg-white/15 rounded-2xl active:scale-95 transition-transform"
+                    title="Müşteriyi Düzenle"
+                  >
+                    <Icon name="edit-3" size={20} className="text-white" />
+                  </button>
+                </div>
+
+                <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest mt-6">Net Bakiye</p>
+                <p className="text-6xl font-black mt-2 leading-none">
+                  {stats[selectedVet.id]?.balance > 0 ? `+${stats[selectedVet.id].balance}` : (stats[selectedVet.id]?.balance || 0)}
+                </p>
+
+                <div className="mt-4 flex justify-center">
+                  {(() => {
+                    const bal = stats[selectedVet.id]?.balance || 0;
+                    const badge = riskBadge(Math.max(0, bal), selectedVet.limit || 0);
+                    return <span className={`px-3 py-1 rounded-full text-[10px] font-black ${badge.cls}`}>{badge.label}</span>
+                  })()}
+                </div>
+              </div>
+
+              {/* product distribution */}
+              <div className="space-y-3">
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 flex items-center gap-2">
+                  <Icon name="box" size={14} /> Ürün Dağılımı
+                </h3>
+                {getVetStats(selectedVet.id).productBalances.length === 0 ? (
+                  <div className="p-5 bg-slate-50 border border-slate-100 rounded-3xl text-slate-400 font-bold text-center">
+                    Ürün dağılımı yok.
+                  </div>
+                ) : getVetStats(selectedVet.id).productBalances.map((item) => (
+                  <div key={item.name} className="flex justify-between p-5 bg-slate-50 border border-slate-100 rounded-3xl shadow-sm">
+                    <span className="font-bold text-slate-700">{item.name}</span>
+                    <span className={`font-black ${item.balance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                      {item.balance > 0 ? `+${item.balance}` : item.balance}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* history */}
+              <div className="space-y-3">
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 flex items-center gap-2">
+                  <Icon name="history" size={14} /> İşlem Geçmişi
+                </h3>
+                {getVetStats(selectedVet.id).history.length === 0 ? (
+                  <div className="p-5 bg-slate-50 border border-slate-100 rounded-3xl text-slate-400 font-bold text-center">
+                    İşlem yok.
+                  </div>
+                ) : getVetStats(selectedVet.id).history.map(t => (
+                  <div key={t.id} className="bg-white p-4 rounded-2xl border border-slate-100 flex items-center justify-between shadow-sm">
+                    <div className="flex items-center gap-3 overflow-hidden text-left">
+                      <div className={`p-2 rounded-xl shrink-0 ${t.qty > 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                        <Icon name={t.qty > 0 ? "arrow-up-right" : "arrow-down-left"} size={20} />
+                      </div>
+                      <div className="overflow-hidden">
+                        <p className="text-sm font-bold text-slate-800 truncate">{t.product}</p>
+                        <p className="text-[10px] text-slate-400 font-bold">{t.date}</p>
+                      </div>
+                    </div>
+                    <span className={`font-black text-lg shrink-0 ml-2 ${t.qty > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                      {t.qty > 0 ? `+${t.qty}` : t.qty}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* delete shortcut */}
+              <div className="pt-2">
+                <button
+                  onClick={() => safeDeleteVet(selectedVet.id)}
+                  className="w-full p-5 rounded-[1.7rem] border border-rose-200 bg-rose-50 text-rose-700 font-black active:scale-[0.99] transition"
+                >
+                  Müşteriyi Sil (Güvenli)
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* MAIN TABS (when not in vet details) */}
+          {!selectedVet && !selectedProduct && activeTab !== 'settings' && (
+            <div className="space-y-6 animate-in fade-in pb-10">
+
+              {/* HOME */}
+              {activeTab === 'home' && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div onClick={() => setActiveTab('stock')} className="p-5 bg-slate-900 rounded-[2.2rem] text-white shadow-lg active:scale-95 transition-transform">
+                      <Icon name="package" className="opacity-40 mb-2" size={24} />
+                      <p className="text-[10px] font-bold opacity-60 uppercase mb-1">Depo Mevcut</p>
+                      <p className="text-3xl font-black tracking-tight">{totalStock}</p>
+                    </div>
+                    <div onClick={() => setActiveTab('vets')} className="p-5 bg-indigo-600 rounded-[2.2rem] text-white shadow-lg active:scale-95 transition-transform text-center">
+                      <Icon name="users" className="opacity-40 mb-2" size={24} />
+                      <p className="text-[10px] font-bold opacity-60 uppercase mb-1">Müşteriler</p>
+                      <p className="text-3xl font-black tracking-tight">{vets.length}</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 p-6 rounded-[2.2rem] border border-slate-100">
+                    <h2 className="font-extrabold text-slate-800 text-lg mb-6 flex items-center gap-2">
+                      <Icon name="alert-circle" size={20} className="text-rose-500" /> Borçlu Listesi
+                    </h2>
+
+                    <div className="space-y-3">
+                      {debtorsTop.length === 0 ? (
+                        <div className="bg-white p-4 rounded-2xl border border-slate-100 text-slate-400 font-bold text-center">
+                          Borçlu müşteri yok.
+                        </div>
+                      ) : debtorsTop.map((v) => {
+                        const badge = riskBadge(v.bal, v.limit);
+                        return (
+                          <div key={v.id} onClick={() => setSelectedVetId(v.id)} className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-100 active:bg-slate-50 transition-all">
+                            <div className="min-w-0">
+                              <div className="font-bold text-slate-700 truncate">{v.name}</div>
+                              <div className="mt-1">
+                                <span className={`px-2 py-1 rounded-full text-[10px] font-black ${badge.cls}`}>{badge.label}</span>
+                              </div>
+                            </div>
+                            <div className="bg-rose-50 px-3 py-1 rounded-full shrink-0 ml-3">
+                              <span className="font-black text-rose-600">+{v.bal}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <button onClick={() => setShowAddForm(true)} className="w-full bg-slate-900 text-white p-6 rounded-[2rem] flex items-center justify-center gap-4 shadow-xl active:scale-95 transition-all">
+                    <Icon name="plus-circle" size={24} />
+                    <span className="font-black text-lg uppercase tracking-tight">Yeni Kayıt İşle</span>
+                  </button>
+                </div>
+              )}
+
+              {/* STOCK */}
+              {activeTab === 'stock' && (
+                <div className="space-y-4">
+                  <button
+                    onClick={() => { setShowQuickAdd('product'); setNewNameInput(''); setNewPhoneInput(''); setNewLimitInput(''); }}
+                    className="w-full p-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold flex items-center justify-center gap-2 active:bg-slate-50 transition-all"
+                  >
+                    <Icon name="plus" size={18} /> Yeni Ürün
+                  </button>
+
+                  {products.map(p => (
+                    <div key={p.id} className="p-5 bg-slate-50 rounded-3xl flex items-center justify-between border border-slate-100 shadow-sm active:bg-slate-100">
+                      <div className="flex items-center gap-4 text-left min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-xs uppercase shrink-0">{(p.name || '?')[0]}</div>
+                        <p className="font-bold text-slate-800 uppercase truncate">{p.name}</p>
+                      </div>
+                      <p className="text-2xl font-black text-indigo-600 shrink-0">{p.stock}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* VETS */}
+              {activeTab === 'vets' && (
+                <div className="space-y-3">
+                  <div className="flex gap-3">
+                    <div className="flex-1 relative">
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300">
+                        <Icon name="search" size={18} />
+                      </div>
+                      <input
+                        value={vetSearch}
+                        onChange={e => setVetSearch(e.target.value)}
+                        placeholder="Müşteri ara (isim / tel)..."
+                        className="w-full pl-12 pr-4 py-4 bg-slate-100 rounded-2xl font-bold outline-none focus:ring-4 focus:ring-indigo-500/10"
+                      />
+                    </div>
+                    <button
+                      onClick={() => { setShowQuickAdd('vet'); setNewNameInput(''); setNewPhoneInput(''); setNewLimitInput(''); }}
+                      className="px-5 bg-slate-900 text-white rounded-2xl font-black active:scale-95 transition-transform"
+                      title="Yeni müşteri"
+                    >
+                      <Icon name="user-plus" size={20} />
+                    </button>
+                  </div>
+
+                  {filteredVets.length === 0 ? (
+                    <div className="p-6 bg-slate-50 border border-slate-100 rounded-3xl text-slate-400 font-bold text-center">
+                      Sonuç yok.
+                    </div>
+                  ) : filteredVets.map(v => {
+                    const bal = stats[v.id]?.balance || 0;
+                    const balColor = bal > 0 ? 'text-rose-600' : bal < 0 ? 'text-emerald-600' : 'text-slate-400';
+                    const badge = riskBadge(Math.max(0, bal), v.limit || 0);
+
+                    return (
+                      <div
+                        key={v.id}
+                        onClick={() => setSelectedVetId(v.id)}
+                        className="p-5 bg-slate-50 rounded-3xl flex items-center justify-between border border-slate-100 shadow-sm active:bg-slate-100"
+                      >
+                        <div className="flex items-center gap-4 text-left min-w-0">
+                          <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold uppercase shrink-0">
+                            {(v.name || '?')[0]}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-800 truncate">{v.name}</p>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              <span className={`px-2 py-1 rounded-full text-[10px] font-black ${badge.cls}`}>{badge.label}</span>
+                              {v.phone ? (
+                                <span className="px-2 py-1 rounded-full text-[10px] font-black bg-slate-200 text-slate-600">TEL: {v.phone}</span>
+                              ) : null}
+                              {v.limit ? (
+                                <span className="px-2 py-1 rounded-full text-[10px] font-black bg-slate-200 text-slate-600">LİMİT: {v.limit}</span>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 shrink-0">
+                          <p className={`text-lg font-black ${balColor}`}>
+                            {bal > 0 ? `+${bal}` : bal}
+                          </p>
+
+                          {/* 3-dot menu */}
+                          <div className="relative" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              className="p-2 rounded-xl active:bg-white transition"
+                              onClick={() => setOpenVetMenuId(openVetMenuId === v.id ? null : v.id)}
+                              title="İşlemler"
+                            >
+                              <Icon name="more-vertical" size={18} className="text-slate-500" />
+                            </button>
+
+                            {openVetMenuId === v.id && (
+                              <div className="absolute right-0 top-10 w-56 bg-white border border-slate-100 rounded-2xl shadow-xl overflow-hidden z-50">
+                                <button
+                                  className="w-full px-4 py-3 text-left font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                  onClick={() => { setOpenVetMenuId(null); openEditVet(v.id); }}
+                                >
+                                  <Icon name="edit-3" size={16} className="text-slate-500" /> Düzenle
+                                </button>
+
+                                <button
+                                  className="w-full px-4 py-3 text-left font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                  onClick={() => {
+                                    setOpenVetMenuId(null);
+                                    // transfer flow: ask target by prompt (simple & robust)
+                                    const other = vets.filter(x => x.id !== v.id);
+                                    if (other.length === 0) { alert("Aktarım için başka müşteri yok."); return; }
+                                    const list = other.map(x => x.name).join("\n");
+                                    const targetName = prompt("İşlemleri aktarılacak hedef müşterinin adını aynen yaz:\n\n" + list);
+                                    if (!targetName) return;
+                                    const target = other.find(x => x.name === normalizeName(targetName));
+                                    if (!target) { alert("Hedef müşteri bulunamadı (isim birebir olmalı)."); return; }
+                                    transferTransactions(v.id, target.id);
+                                  }}
+                                >
+                                  <Icon name="repeat" size={16} className="text-slate-500" /> İşlemleri Aktar
+                                </button>
+
+                                <button
+                                  className="w-full px-4 py-3 text-left font-black text-rose-600 hover:bg-rose-50 flex items-center gap-2"
+                                  onClick={() => safeDeleteVet(v.id)}
+                                >
+                                  <Icon name="trash-2" size={16} className="text-rose-500" /> Güvenli Sil
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* HISTORY */}
+              {activeTab === 'history' && (
+                <div className="space-y-3">
+                  {transactions.slice().reverse().map(t => {
+                    const v = vets.find(x => x.id === t.vetId);
+                    return (
+                      <div key={t.id} className="bg-white p-4 rounded-2xl border border-slate-100 flex items-center justify-between shadow-sm transition-all active:scale-[0.98]">
+                        <div className="flex items-center gap-3 overflow-hidden text-left min-w-0">
+                          <div className={`p-2 rounded-xl shrink-0 ${t.qty > 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                            <Icon name={t.qty > 0 ? "arrow-up-right" : "arrow-down-left"} size={20} />
+                          </div>
+                          <div className="overflow-hidden min-w-0">
+                            <p className="text-sm font-bold text-slate-900 truncate">{v ? v.name : '—'}</p>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest truncate">
+                              {t.product} • {t.date}
+                            </p>
+                          </div>
+                        </div>
+                        <span className={`font-black text-lg shrink-0 ml-2 ${t.qty > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                          {t.qty > 0 ? `+${t.qty}` : t.qty}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+            </div>
+          )}
+        </main>
+
+        {/* Bottom nav */}
+        <nav className="bg-white border-t border-slate-100 h-20 shrink-0 flex justify-around items-center px-4 shadow-[0_-15px_40px_rgba(0,0,0,0.04)] z-50">
+          <button onClick={() => { setActiveTab('home'); setSelectedVetId(null); setSelectedProduct(null); }}
+                  className={`p-4 transition-all duration-200 ${activeTab === 'home' && !selectedVetId && !selectedProduct ? 'tab-active' : 'text-slate-300'}`}>
+            <Icon name="layout-dashboard" size={26} />
+          </button>
+          <button onClick={() => { setActiveTab('stock'); setSelectedVetId(null); setSelectedProduct(null); }}
+                  className={`p-4 transition-all duration-200 ${activeTab === 'stock' ? 'tab-active' : 'text-slate-300'}`}>
+            <Icon name="package" size={26} />
+          </button>
+          <button onClick={() => { setActiveTab('vets'); setSelectedVetId(null); setSelectedProduct(null); }}
+                  className={`p-4 transition-all duration-200 ${activeTab === 'vets' ? 'tab-active' : 'text-slate-300'}`}>
+            <Icon name="users" size={26} />
+          </button>
+          <button onClick={() => { setActiveTab('history'); setSelectedVetId(null); setSelectedProduct(null); }}
+                  className={`p-4 transition-all duration-200 ${activeTab === 'history' ? 'tab-active' : 'text-slate-300'}`}>
+            <Icon name="clipboard-list" size={26} />
+          </button>
+        </nav>
+
+        {/* MODAL: Yeni İşlem */}
+        {showAddForm && (
+          <div className="fixed inset-0 bg-slate-900/80 z-[100] flex items-end backdrop-blur-sm p-0 m-0 transition-opacity">
+            <div className="bg-white w-full rounded-t-[3rem] p-8 shadow-2xl animate-in slide-in-from-bottom duration-500 max-h-[95dvh] overflow-y-auto pb-safe">
+              <div className="w-16 h-1.5 bg-slate-100 rounded-full mx-auto mb-8"></div>
+              <h3 className="text-2xl font-black text-slate-800 mb-8 flex items-center gap-3">
+                <Icon name="edit-3" size={24} className="text-indigo-600" /> Cari İşlem Gir
+              </h3>
+
+              <div className="space-y-5">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-extrabold text-slate-400 uppercase ml-2 tracking-widest text-center block">Tarih</label>
+                  <input type="date"
+                         className="w-full p-5 bg-slate-100 border-none rounded-[1.5rem] font-bold outline-none text-center"
+                         value={formDate}
+                         onChange={e => setFormDate(e.target.value)} />
+                </div>
+
+                <div className="space-y-1 text-left">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Müşteri Seçiniz</label>
+                  <select
+                    className="w-full p-5 bg-slate-100 border-none rounded-[1.5rem] font-bold outline-none appearance-none shadow-inner"
+                    value={formVetId}
+                    onChange={e => setFormVetId(e.target.value)}
+                  >
+                    <option value="">Seçiniz</option>
+                    {vets.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+                  </select>
+                </div>
+
+                <div className="space-y-1 text-left">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Ürün Seçiniz</label>
+                  <select
+                    className="w-full p-5 bg-slate-100 border-none rounded-[1.5rem] font-bold outline-none appearance-none shadow-inner"
+                    value={formProduct}
+                    onChange={e => setFormProduct(e.target.value)}
+                  >
+                    <option value="">Ürün Seçiniz</option>
+                    {products.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1 text-left">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Miktar</label>
+                    <input type="number"
+                           className="w-full p-5 bg-slate-100 border-none rounded-[1.5rem] font-black text-center"
+                           placeholder="0"
+                           value={formQty}
+                           onChange={e => setFormQty(e.target.value)} />
+                  </div>
+
+                  <div className="space-y-1 text-left">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Tür</label>
+                    <select
+                      className="w-full p-5 bg-slate-100 border-none rounded-[1.5rem] font-bold text-indigo-600 text-center shadow-inner appearance-none"
+                      value={formType}
+                      onChange={e => setFormType(e.target.value)}
+                    >
+                      <option value="borclanma">BORÇLANMA (+)</option>
+                      <option value="odeme">ÖDEME (-)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 pt-6 pb-4">
+                  <button onClick={() => setShowAddForm(false)} className="flex-1 bg-slate-50 p-5 rounded-[1.5rem] font-bold text-slate-400 active:bg-slate-100 transition-colors">Vazgeç</button>
+                  <button onClick={handleTransaction} className="flex-[2] bg-indigo-600 text-white p-5 rounded-[1.5rem] font-black shadow-xl uppercase tracking-tight transition-transform active:scale-95">Tamamla</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: Quick Add (vet / product) */}
+        {showQuickAdd && (
+          <div className="fixed inset-0 bg-slate-900/80 z-[110] flex items-center justify-center p-6 backdrop-blur-sm">
+            <div className="bg-white w-full rounded-[32px] p-8 shadow-2xl animate-in zoom-in transition-all">
+              <h3 className="text-xl font-black mb-6 text-slate-800">
+                {showQuickAdd === 'vet' ? 'Yeni Müşteri' : 'Yeni Ürün'}
+              </h3>
+
+              <input
+                type="text"
+                className="w-full p-5 bg-slate-100 border-none rounded-[1.5rem] mb-4 font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                placeholder={showQuickAdd === 'vet' ? "Müşteri adı..." : "Ürün adı..."}
+                value={newNameInput}
+                onChange={e => setNewNameInput(e.target.value)}
+              />
+
+              {showQuickAdd === 'vet' && (
+                <div className="grid grid-cols-2 gap-3 mb-6">
+                  <input
+                    type="text"
+                    className="w-full p-4 bg-slate-100 border-none rounded-[1.3rem] font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                    placeholder="Telefon (opsiyonel)"
+                    value={newPhoneInput}
+                    onChange={e => setNewPhoneInput(e.target.value)}
+                  />
+                  <input
+                    type="number"
+                    className="w-full p-4 bg-slate-100 border-none rounded-[1.3rem] font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                    placeholder="Limit (opsiyonel)"
+                    value={newLimitInput}
+                    onChange={e => setNewLimitInput(e.target.value)}
+                  />
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button onClick={() => { setShowQuickAdd(null); setNewNameInput(''); setNewPhoneInput(''); setNewLimitInput(''); }}
+                        className="flex-1 py-4 bg-slate-50 rounded-2xl font-bold text-slate-400 active:bg-slate-100">
+                  İptal
+                </button>
+
+                <button
+                  onClick={() => {
+                    const cleanName = normalizeName(newNameInput);
+                    if (!cleanName) return;
+
+                    if (showQuickAdd === 'vet') {
+                      if (vets.some(v => v.name === cleanName)) { alert("Bu isimde müşteri zaten var."); return; }
+
+                      const phone = formatPhone(newPhoneInput);
+                      const limit = Number(newLimitInput || 0) || 0;
+
+                      setVets([...vets, { id: uid(), name: cleanName, phone, limit }]);
+                    } else {
+                      if (products.some(p => p.name === cleanName)) { alert("Bu isimde ürün zaten var."); return; }
+                      setProducts([...products, { id: uid(), name: cleanName, stock: 0 }]);
+                    }
+
+                    setShowQuickAdd(null);
+                    setNewNameInput(''); setNewPhoneInput(''); setNewLimitInput('');
+                  }}
+                  className="flex-[2] py-4 bg-slate-900 text-white rounded-2xl font-black shadow-lg uppercase transition-transform active:scale-95">
+                  Ekle
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: Edit Vet */}
+        {editingVetId && (
+          <div className="fixed inset-0 bg-slate-900/80 z-[120] flex items-center justify-center p-6 backdrop-blur-sm">
+            <div className="bg-white w-full rounded-[32px] p-8 shadow-2xl animate-in zoom-in transition-all">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-black text-slate-800">Müşteri Düzenle</h3>
+                <button onClick={() => setEditingVetId(null)} className="p-2 rounded-xl active:bg-slate-50">
+                  <Icon name="x" size={18} className="text-slate-400" />
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[10px] font-extrabold text-slate-400 uppercase ml-2 tracking-widest">Müşteri Adı</label>
+                  <input
+                    type="text"
+                    className="w-full p-5 bg-slate-100 border-none rounded-[1.5rem] font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                    value={editVetName}
+                    onChange={e => setEditVetName(e.target.value)}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-extrabold text-slate-400 uppercase ml-2 tracking-widest">Telefon</label>
+                    <input
+                      type="text"
+                      className="w-full p-4 bg-slate-100 border-none rounded-[1.3rem] font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                      value={editVetPhone}
+                      onChange={e => setEditVetPhone(e.target.value)}
+                      placeholder="Opsiyonel"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-extrabold text-slate-400 uppercase ml-2 tracking-widest">Limit</label>
+                    <input
+                      type="number"
+                      className="w-full p-4 bg-slate-100 border-none rounded-[1.3rem] font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                      value={editVetLimit}
+                      onChange={e => setEditVetLimit(e.target.value)}
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-4 flex gap-3">
+                  <button
+                    onClick={() => setEditingVetId(null)}
+                    className="flex-1 py-4 bg-slate-50 rounded-2xl font-bold text-slate-400 active:bg-slate-100"
+                  >
+                    İptal
+                  </button>
+                  <button
+                    onClick={saveVetEdit}
+                    className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-lg uppercase transition-transform active:scale-95"
+                  >
+                    Kaydet
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-6 text-xs font-bold text-slate-400">
+                * İsim değişince geçmiş işlemler aynı müşteri ID’si ile kaldığı için veri bozulmaz.
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
+    );
+  };
+
+  const root = ReactDOM.createRoot(document.getElementById('root'));
+  root.render(<App />);
+</script>
 </body>
 </html>
