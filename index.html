@@ -199,13 +199,23 @@
     const selectedVet = useMemo(() => vets.find(v => v.id === selectedVetId) || null, [vets, selectedVetId]);
     const selectedProduct = useMemo(() => products.find(p => p.id === selectedProductId) || null, [products, selectedProductId]);
 
-    // Detay İstatistikleri (Loose equality == kullanıldı ID eşleşmesi için)
+    // Alfabetik Sıralanmış Müşteriler (Türkçe karakter duyarlı)
+    const sortedVets = useMemo(() => {
+      return [...vets].sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+    }, [vets]);
+
+    // Alfabetik Sıralanmış Ürünler
+    const sortedProductsList = useMemo(() => {
+      return [...products].sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+    }, [products]);
+
     const getVetStats = (vId) => {
       const vetTrans = transactions.filter(t => t.vetId == vId);
       const balance = vetTrans.reduce((acc, t) => acc + Number(t.qty), 0);
       const productBalances = {};
       vetTrans.forEach(t => { productBalances[t.product] = (productBalances[t.product] || 0) + Number(t.qty); });
       const items = Object.keys(productBalances).map(name => ({ name, balance: productBalances[name] })).filter(i => i.balance !== 0);
+      items.sort((a, b) => a.name.localeCompare(b.name, 'tr'));
       return { balance, history: [...vetTrans].reverse(), productBalances: items };
     };
 
@@ -218,6 +228,7 @@
         id: vId,
         balance: vetBalances[vId] 
       })).filter(i => i.balance !== 0);
+      items.sort((a, b) => a.name.localeCompare(b.name, 'tr'));
       return { history: [...prodTrans].reverse(), vetBalances: items };
     };
 
@@ -266,7 +277,6 @@
       setOpenTransMenuId(null);
     };
 
-    // GERİ BUTONU MANTIĞI
     const handleBack = () => {
       if (selectedVetId || selectedProductId) {
         setSelectedVetId(null);
@@ -295,8 +305,9 @@
         </header>
 
         <main className="scroll-area no-scrollbar p-4 bg-white">
+          {/* AYARLAR */}
           {activeTab === 'settings' && !selectedVetId && !selectedProductId && (
-            <div className="space-y-4 animate-in">
+            <div className="space-y-4 animate-in text-left">
               <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 space-y-4 shadow-sm">
                 <h3 className="font-bold text-slate-800 text-sm">Veri Yönetimi</h3>
                 <div className="space-y-2">
@@ -465,7 +476,7 @@
           {activeTab === 'stock' && !selectedProductId && (
             <div className="space-y-2 animate-in text-left">
               <button onClick={() => setShowQuickAdd('product')} className="w-full p-3 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 font-bold text-xs mb-2 active:bg-slate-50">+ Yeni Ürün Ekle</button>
-              {products.map(p => (
+              {sortedProductsList.map(p => (
                 <div key={p.id} onClick={() => setSelectedProductId(p.id)} className="p-4 bg-slate-50 rounded-xl flex items-center justify-between border border-slate-100 active:bg-slate-100 relative shadow-sm">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-slate-800 text-white flex items-center justify-center font-bold text-[10px] uppercase tracking-tighter">{p.name[0]}</div>
@@ -498,7 +509,7 @@
                 <input value={vetSearch} onChange={e => setVetSearch(e.target.value)} placeholder="Müşteri ara..." className="flex-1 p-3 bg-slate-100 rounded-xl font-bold text-sm outline-none" />
                 <button onClick={() => setShowQuickAdd('vet')} className="px-4 bg-slate-900 text-white rounded-xl active:scale-90 transition shrink-0"><Icon name="user-plus" size={18} /></button>
               </div>
-              {vets.filter(v => normalizeName(v.name).includes(normalizeName(vetSearch))).map(v => (
+              {sortedVets.filter(v => normalizeName(v.name).includes(normalizeName(vetSearch))).map(v => (
                 <div key={v.id} onClick={() => setSelectedVetId(v.id)} className="p-4 bg-slate-50 rounded-xl flex items-center justify-between border border-slate-100 active:bg-slate-100 relative shadow-sm">
                   <div className="flex items-center gap-3 truncate">
                     <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs uppercase shrink-0">{v.name[0]}</div>
@@ -597,7 +608,7 @@
         {/* DÜZENLEME MODALLARI */}
         {editingVetId && (
           <div className="fixed inset-0 bg-slate-900/60 z-[150] flex items-center justify-center p-5 backdrop-blur-sm">
-            <div className="bg-white w-full rounded-2xl p-6 animate-in shadow-2xl">
+            <div className="bg-white w-full rounded-2xl p-6 animate-in shadow-2xl text-left">
               <h3 className="font-black text-slate-800 mb-4 text-sm uppercase">Müşteri Düzenle</h3>
               <input value={editVetName} onChange={e => setEditVetName(e.target.value)} className="w-full p-3 bg-slate-100 rounded-xl mb-2 font-bold text-sm outline-none uppercase" placeholder="İsim" />
               <div className="grid grid-cols-2 gap-2 mb-3">
@@ -646,7 +657,7 @@
                   if(showQuickAdd === 'vet') setVets([...vets, { id:uid(), name:n, phone:'', limit:0 }]);
                   else setProducts([...products, { id:uid(), name:n, stock:0 }]);
                   setShowQuickAdd(null); setNewNameInput('');
-                }} className="flex-1 p-3 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase text-center text-center">EKLE</button>
+                }} className="flex-1 p-3 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase text-center">EKLE</button>
               </div>
             </div>
           </div>
@@ -674,7 +685,7 @@
                   <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Müşteri Seçin</label>
                   <select className="w-full p-3 bg-slate-100 rounded-xl font-bold text-xs outline-none uppercase" value={formVetId} onChange={e => setFormVetId(e.target.value)}>
                     <option value="">Seçiniz</option>
-                    {vets.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                    {sortedVets.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
                   </select>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -682,7 +693,7 @@
                     <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Ürün Seçin</label>
                     <select className="w-full p-3 bg-slate-100 rounded-xl font-bold text-xs outline-none uppercase" value={formProduct} onChange={e => setFormProduct(e.target.value)}>
                         <option value="">Seçiniz</option>
-                        {products.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                        {sortedProductsList.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
                     </select>
                   </div>
                   <div className="space-y-1">
