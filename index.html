@@ -199,7 +199,7 @@
     const selectedVet = useMemo(() => vets.find(v => v.id === selectedVetId) || null, [vets, selectedVetId]);
     const selectedProduct = useMemo(() => products.find(p => p.id === selectedProductId) || null, [products, selectedProductId]);
 
-    // Detay İstatistikleri (Tip dönüşümü yapıldı: t.vetId == vetId)
+    // Detay İstatistikleri (Loose equality == kullanıldı ID eşleşmesi için)
     const getVetStats = (vId) => {
       const vetTrans = transactions.filter(t => t.vetId == vId);
       const balance = vetTrans.reduce((acc, t) => acc + Number(t.qty), 0);
@@ -228,9 +228,7 @@
       
       if (editingTransId) {
         const oldT = transactions.find(t => t.id === editingTransId);
-        // Eski kaydı geri al
         const revertedProducts = products.map(p => p.name === oldT.product ? { ...p, stock: p.stock - Number(oldT.qty) } : p);
-        // Yeni kaydı ekle
         const updatedProducts = revertedProducts.map(p => p.name === formProduct ? { ...p, stock: p.stock + finalQty } : p);
         setProducts(updatedProducts);
         setTransactions(transactions.map(t => t.id === editingTransId ? { ...t, vetId: formVetId, product: formProduct, qty: finalQty, date: formDate, type: formType } : t));
@@ -268,12 +266,22 @@
       setOpenTransMenuId(null);
     };
 
+    // GERİ BUTONU MANTIĞI
+    const handleBack = () => {
+      if (selectedVetId || selectedProductId) {
+        setSelectedVetId(null);
+        setSelectedProductId(null);
+      } else if (activeTab !== 'home') {
+        setActiveTab('home');
+      }
+    };
+
     return (
       <div className="app-shell">
         <header className="bg-white px-4 flex items-center justify-between border-b border-slate-100 z-50">
           <div className="flex items-center gap-2 overflow-hidden text-left">
-            {(selectedVetId || selectedProductId || (activeTab !== 'home' && activeTab !== 'settings')) && (
-              <button onClick={() => { setSelectedVetId(null); setSelectedProductId(null); if (activeTab === 'settings') setActiveTab('home'); }} className="p-1.5 active:bg-slate-50 rounded-full">
+            {(selectedVetId || selectedProductId || activeTab !== 'home') && (
+              <button onClick={handleBack} className="p-1.5 active:bg-slate-50 rounded-full">
                 <Icon name="chevron-left" size={22} className="text-slate-600" />
               </button>
             )}
@@ -287,7 +295,6 @@
         </header>
 
         <main className="scroll-area no-scrollbar p-4 bg-white">
-          {/* AYARLAR */}
           {activeTab === 'settings' && !selectedVetId && !selectedProductId && (
             <div className="space-y-4 animate-in">
               <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 space-y-4 shadow-sm">
@@ -331,7 +338,7 @@
               <div className="p-6 bg-indigo-600 rounded-3xl text-center text-white shadow-lg relative">
                 <div className="flex items-center justify-between mb-4">
                   <div className="text-left overflow-hidden">
-                    <h2 className="text-xl font-extrabold truncate">{selectedVet.name}</h2>
+                    <h2 className="text-xl font-extrabold truncate uppercase">{selectedVet.name}</h2>
                     {(selectedVet.phone || (selectedVet.limit > 0)) && (
                       <p className="text-[11px] font-medium opacity-80 truncate">
                         {selectedVet.phone && `${selectedVet.phone}`}
@@ -355,7 +362,7 @@
                 {getVetStats(selectedVet.id).productBalances.length === 0 ? (
                     <p className="p-4 bg-slate-50 rounded-xl text-slate-400 text-xs text-center font-bold italic">Müşteriye ait aktif ürün borcu bulunmuyor.</p>
                 ) : getVetStats(selectedVet.id).productBalances.map(item => (
-                  <div key={item.name} className="flex justify-between p-4 bg-slate-50 border border-slate-100 rounded-2xl">
+                  <div key={item.name} className="flex justify-between p-4 bg-slate-50 border border-slate-100 rounded-2xl shadow-sm">
                     <span className="font-bold text-slate-700 text-sm uppercase">{item.name}</span>
                     <span className={`font-black text-sm ${item.balance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{item.balance > 0 ? `+${item.balance}` : item.balance}</span>
                   </div>
@@ -363,7 +370,7 @@
               </div>
 
               <div className="space-y-2">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 text-left">Müşteri Geçmişi</h3>
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 text-left">Geçmiş</h3>
                 {getVetStats(selectedVet.id).history.map(t => (
                   <div key={t.id} className="bg-white p-3 rounded-xl border border-slate-100 flex items-center justify-between shadow-sm">
                     <div className="flex items-center gap-3">
@@ -396,8 +403,8 @@
                   </button>
                 </div>
                 <div className="py-2 text-center">
-                  <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest">TOPLAM BORÇTAKİ</p>
-                  <p className="text-5xl font-black mt-1 text-indigo-400">{selectedProduct.stock}</p>
+                  <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest text-indigo-400">TOPLAM BORÇTAKİ</p>
+                  <p className="text-5xl font-black mt-1 text-white">{selectedProduct.stock}</p>
                 </div>
               </div>
               
@@ -406,19 +413,16 @@
                 {getProductStats(selectedProduct.name).vetBalances.length === 0 ? (
                    <p className="p-4 bg-slate-50 rounded-xl text-slate-400 text-xs text-center font-bold italic">Borç kaydı bulunamadı.</p>
                 ) : getProductStats(selectedProduct.name).vetBalances.map(item => (
-                  <div key={item.id} onClick={() => { setSelectedProductId(null); setSelectedVetId(item.id); }} className="flex justify-between p-4 bg-slate-50 border border-slate-100 rounded-2xl active:bg-slate-100">
+                  <div key={item.id} onClick={() => { setSelectedProductId(null); setSelectedVetId(item.id); }} className="flex justify-between p-4 bg-slate-50 border border-slate-100 rounded-2xl active:bg-slate-100 shadow-sm">
                     <span className="font-bold text-slate-700 text-sm truncate uppercase">{item.name}</span>
                     <span className={`font-black text-sm ${item.balance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{item.balance > 0 ? `+${item.balance}` : item.balance}</span>
                   </div>
                 ))}
               </div>
 
-              {/* ÜRÜN GEÇMİŞİ (YENİ EKLENDİ) */}
               <div className="space-y-2">
                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Ürün Hareketleri</h3>
-                {getProductStats(selectedProduct.name).history.length === 0 ? (
-                    <p className="p-4 bg-slate-50 rounded-xl text-slate-400 text-xs text-center font-bold italic">Hareket kaydı yok.</p>
-                ) : getProductStats(selectedProduct.name).history.map(t => (
+                {getProductStats(selectedProduct.name).history.map(t => (
                   <div key={t.id} className="bg-white p-3 rounded-xl border border-slate-100 flex items-center justify-between shadow-sm">
                     <div className="flex items-center gap-3 overflow-hidden">
                       <div className={`p-1.5 rounded-lg shrink-0 ${t.qty > 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
@@ -445,13 +449,13 @@
                   <p className="text-[10px] font-bold opacity-60 uppercase tracking-wider">ÜRÜN</p>
                   <p className="text-xl font-black">{products.reduce((a, b) => a + Number(b.stock), 0)}</p>
                 </div>
-                <div onClick={() => setActiveTab('vets')} className="p-4 bg-indigo-600 rounded-2xl text-white shadow-sm active:scale-95 transition">
+                <div onClick={() => setActiveTab('vets')} className="p-4 bg-indigo-600 rounded-2xl text-white shadow-sm active:scale-95 transition text-center">
                   <Icon name="users" className="opacity-40 mb-1" size={18} />
-                  <p className="text-[10px] font-bold opacity-60 uppercase tracking-wider">Müşteri</p>
+                  <p className="text-[10px] font-bold opacity-60 uppercase tracking-wider">MÜŞTERİ</p>
                   <p className="text-xl font-black">{vets.length}</p>
                 </div>
               </div>
-              <button onClick={() => { resetForm(); setShowAddForm(true); }} className="w-full bg-indigo-600 text-white p-4 rounded-2xl flex items-center justify-center gap-2 font-bold shadow-lg active:scale-[0.98] transition uppercase tracking-tight">
+              <button onClick={() => { resetForm(); setShowAddForm(true); }} className="w-full bg-indigo-600 text-white p-5 rounded-2xl flex items-center justify-center gap-2 font-bold shadow-lg active:scale-[0.98] transition uppercase tracking-tight">
                 <Icon name="plus-circle" size={20} /> Yeni İşlem Gir
               </button>
             </div>
@@ -462,9 +466,9 @@
             <div className="space-y-2 animate-in text-left">
               <button onClick={() => setShowQuickAdd('product')} className="w-full p-3 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 font-bold text-xs mb-2 active:bg-slate-50">+ Yeni Ürün Ekle</button>
               {products.map(p => (
-                <div key={p.id} onClick={() => setSelectedProductId(p.id)} className="p-4 bg-slate-50 rounded-xl flex items-center justify-between border border-slate-100 active:bg-slate-100 relative">
+                <div key={p.id} onClick={() => setSelectedProductId(p.id)} className="p-4 bg-slate-50 rounded-xl flex items-center justify-between border border-slate-100 active:bg-slate-100 relative shadow-sm">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-slate-800 text-white flex items-center justify-center font-bold text-[10px] uppercase">{p.name[0]}</div>
+                    <div className="w-8 h-8 rounded-lg bg-slate-800 text-white flex items-center justify-center font-bold text-[10px] uppercase tracking-tighter">{p.name[0]}</div>
                     <p className="font-bold text-slate-700 text-sm uppercase">{p.name}</p>
                   </div>
                   <div className="flex items-center gap-3">
@@ -495,7 +499,7 @@
                 <button onClick={() => setShowQuickAdd('vet')} className="px-4 bg-slate-900 text-white rounded-xl active:scale-90 transition shrink-0"><Icon name="user-plus" size={18} /></button>
               </div>
               {vets.filter(v => normalizeName(v.name).includes(normalizeName(vetSearch))).map(v => (
-                <div key={v.id} onClick={() => setSelectedVetId(v.id)} className="p-4 bg-slate-50 rounded-xl flex items-center justify-between border border-slate-100 active:bg-slate-100 relative">
+                <div key={v.id} onClick={() => setSelectedVetId(v.id)} className="p-4 bg-slate-50 rounded-xl flex items-center justify-between border border-slate-100 active:bg-slate-100 relative shadow-sm">
                   <div className="flex items-center gap-3 truncate">
                     <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs uppercase shrink-0">{v.name[0]}</div>
                     <div className="truncate">
@@ -583,7 +587,7 @@
               <div className="flex gap-3">
                 <button onClick={() => setConfirmDelete({ open: false })} className="flex-1 py-3 bg-slate-100 rounded-xl font-bold text-slate-500 text-xs">{confirmDelete.type === 'alert' ? 'Tamam' : 'Vazgeç'}</button>
                 {confirmDelete.type !== 'alert' && (
-                  <button onClick={() => { confirmDelete.onConfirm(); setConfirmDelete({ open: false }); }} className="flex-1 py-3 bg-rose-600 text-white rounded-xl font-black text-xs uppercase">SİL</button>
+                  <button onClick={() => { confirmDelete.onConfirm(); setConfirmDelete({ open: false }); }} className="flex-1 py-3 bg-rose-600 text-white rounded-xl font-black text-xs uppercase text-center">SİL</button>
                 )}
               </div>
             </div>
@@ -605,7 +609,7 @@
                 <button onClick={() => {
                   setVets(vets.map(v => v.id === editingVetId ? { ...v, name: normalizeName(editVetName), phone: editVetPhone, limit: Number(editVetLimit) } : v));
                   setEditingVetId(null);
-                }} className="flex-1 p-3 bg-indigo-600 text-white rounded-xl font-black text-xs">KAYDET</button>
+                }} className="flex-1 p-3 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase text-center">KAYDET</button>
               </div>
             </div>
           </div>
@@ -613,7 +617,7 @@
 
         {editingProductId && (
           <div className="fixed inset-0 bg-slate-900/60 z-[150] flex items-center justify-center p-5 backdrop-blur-sm">
-            <div className="bg-white w-full rounded-2xl p-6 animate-in shadow-2xl">
+            <div className="bg-white w-full rounded-2xl p-6 animate-in shadow-2xl text-left">
               <h3 className="font-black text-slate-800 mb-4 text-sm uppercase">Ürün Düzenle</h3>
               <input value={editProductName} onChange={e => setEditProductName(e.target.value)} className="w-full p-3 bg-slate-100 rounded-xl mb-3 font-bold text-sm outline-none uppercase" placeholder="Ürün Adı" />
               <div className="flex gap-2">
@@ -624,7 +628,7 @@
                   setProducts(products.map(p => p.id === editingProductId ? { ...p, name: newName } : p));
                   setTransactions(transactions.map(t => t.product === oldName ? { ...t, product: newName } : t));
                   setEditingProductId(null);
-                }} className="flex-1 p-3 bg-indigo-600 text-white rounded-xl font-black text-xs">KAYDET</button>
+                }} className="flex-1 p-3 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase text-center">KAYDET</button>
               </div>
             </div>
           </div>
@@ -642,7 +646,7 @@
                   if(showQuickAdd === 'vet') setVets([...vets, { id:uid(), name:n, phone:'', limit:0 }]);
                   else setProducts([...products, { id:uid(), name:n, stock:0 }]);
                   setShowQuickAdd(null); setNewNameInput('');
-                }} className="flex-1 p-3 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase text-center">EKLE</button>
+                }} className="flex-1 p-3 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase text-center text-center">EKLE</button>
               </div>
             </div>
           </div>
@@ -687,7 +691,7 @@
                   </div>
                 </div>
                 <div className="flex gap-3 pt-4">
-                  <button onClick={() => { setShowAddForm(false); setEditingTransId(null); }} className="flex-1 p-4 bg-slate-100 rounded-2xl font-bold text-slate-400 text-sm">İptal</button>
+                  <button onClick={() => { setShowAddForm(false); setEditingTransId(null); }} className="flex-1 p-4 bg-slate-100 rounded-2xl font-bold text-slate-400 text-sm uppercase">İptal</button>
                   <button onClick={handleTransaction} className="flex-1 p-4 bg-indigo-600 text-white rounded-2xl font-black text-sm uppercase">{editingTransId ? 'Güncelle' : 'Tamamla'}</button>
                 </div>
               </div>
