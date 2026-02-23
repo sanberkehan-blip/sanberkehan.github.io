@@ -3,13 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <!-- PWA ve Mobil Uygulama Desteği -->
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Borç Defteri">
-    <title>Borç Defteri</title>
+    <title>Borç Defteri Pro</title>
     
+    <!-- Kütüphaneler -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -20,8 +16,9 @@
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
         
         :root {
-            --sat-height: env(safe-area-inset-top);
-            --sab-height: env(safe-area-inset-bottom);
+            --sat: env(safe-area-inset-top, 0px);
+            --sab: env(safe-area-inset-bottom, 0px);
+            --indigo-600: #4f46e5;
         }
 
         html, body {
@@ -31,17 +28,18 @@
             overflow: hidden;
             background-color: #f8fafc;
             font-family: 'Plus Jakarta Sans', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior: none;
         }
 
         #root { height: 100dvh; }
 
+        /* ANDROID SHELL MİMARİSİ: Çakışmaları %100 önler */
         .app-shell {
             display: grid;
-            grid-template-rows: 64px 1fr 80px;
+            grid-template-rows: calc(64px + var(--sat)) 1fr calc(80px + var(--sab));
             height: 100dvh;
             width: 100%;
-            max-width: 500px;
-            margin: 0 auto;
             background: white;
             position: relative;
         }
@@ -49,34 +47,54 @@
         .scroll-area {
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
+            padding: 16px;
+            background-color: #f8fafc;
         }
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
         
         input, select { font-size: 16px !important; }
         
-        .icon-box {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 24px;
-            height: 24px;
+        .btn-active:active {
+            transform: scale(0.96);
+            opacity: 0.9;
         }
 
-        .tab-active {
-            color: #4f46e5;
-            position: relative;
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            color: #94a3b8;
+            transition: all 0.3s ease;
         }
-        .tab-active::after {
-            content: '';
-            position: absolute;
-            bottom: -10px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 4px;
-            height: 4px;
-            background: #4f46e5;
-            border-radius: 50%;
+
+        .nav-item.active {
+            color: #4f46e5;
+        }
+
+        .nav-indicator {
+            height: 32px;
+            width: 64px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .nav-item.active .nav-indicator {
+            background-color: #e0e7ff;
+        }
+
+        .fade-in { animation: fadeIn 0.25s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Silme onayı modalı için özel stil */
+        .modal-backdrop {
+            background-color: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(4px);
         }
     </style>
 </head>
@@ -86,7 +104,6 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
 
-        // İkon Bileşeni (DOM Çakışmasını Önleyen Wrapper)
         const Icon = ({ name, size = 24, className = "" }) => {
             const wrapperRef = useRef(null);
             useEffect(() => {
@@ -98,39 +115,36 @@
                     });
                 }
             }, [name, size, className]);
-            return <span ref={wrapperRef} className="icon-box"></span>;
+            return <span ref={wrapperRef} className="inline-flex items-center justify-center"></span>;
         };
 
-        const INITIAL_BOGALAR = [
+        const INITIAL_VETS = ["Abdullah Yelekçi", "Adil Aygün", "Ahmet Arıcı", "Sinan Koç", "Yusuf Kara"];
+        const INITIAL_PRODS = [
             { id: 1, name: 'ALM', stock: 0 },
             { id: 2, name: 'AROW', stock: 0 },
             { id: 3, name: 'ASTOR', stock: 0 },
             { id: 4, name: 'BARON', stock: 0 }
         ];
 
-        const INITIAL_VETS = ["Abdullah Yelekçi", "Adil Aygün", "Ahmet Arıcı", "Sinan Koç", "Yusuf Kara"];
-
         const App = () => {
             const [activeTab, setActiveTab] = useState('home');
             const [selectedVet, setSelectedVet] = useState(null);
-            const [selectedProduct, setSelectedProduct] = useState(null);
             const [searchQuery, setSearchQuery] = useState('');
             const [showAddForm, setShowAddForm] = useState(false);
             const [showQuickAdd, setShowQuickAdd] = useState(null);
-            const fileInputRef = useRef(null);
+            const [editingItem, setEditingItem] = useState(null); // { type: 'vet', oldName: string }
+            const [deleteConfirm, setDeleteConfirm] = useState(null); // { type: 'vet', name: string }
             
-            // Veri Hafızası
-            const [vets, setVets] = useState(() => JSON.parse(localStorage.getItem('v_vets_v5')) || INITIAL_VETS);
-            const [products, setProducts] = useState(() => JSON.parse(localStorage.getItem('v_prods_v5')) || INITIAL_BOGALAR);
-            const [transactions, setTransactions] = useState(() => JSON.parse(localStorage.getItem('v_trans_v5')) || []);
+            const [vets, setVets] = useState(() => JSON.parse(localStorage.getItem('v_apk_v13_vets')) || INITIAL_VETS);
+            const [products, setProducts] = useState(() => JSON.parse(localStorage.getItem('v_apk_v13_prods')) || INITIAL_PRODS);
+            const [transactions, setTransactions] = useState(() => JSON.parse(localStorage.getItem('v_apk_v13_trans')) || []);
 
             useEffect(() => {
-                localStorage.setItem('v_vets_v5', JSON.stringify(vets));
-                localStorage.setItem('v_prods_v5', JSON.stringify(products));
-                localStorage.setItem('v_trans_v5', JSON.stringify(transactions));
+                localStorage.setItem('v_apk_v13_vets', JSON.stringify(vets));
+                localStorage.setItem('v_apk_v13_prods', JSON.stringify(products));
+                localStorage.setItem('v_apk_v13_trans', JSON.stringify(transactions));
             }, [vets, products, transactions]);
 
-            // Form State
             const [formVet, setFormVet] = useState('');
             const [formProduct, setFormProduct] = useState('');
             const [formQty, setFormQty] = useState('');
@@ -138,30 +152,19 @@
             const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
             const [newNameInput, setNewNameInput] = useState('');
 
-            const stats = useMemo(() => {
-                const vetMap = {};
-                vets.forEach(v => vetMap[v] = { balance: 0, items: {} });
+            // Müşteri Analizi
+            const vetStats = useMemo(() => {
+                const map = {};
+                vets.forEach(v => map[v] = { balance: 0, items: {}, history: [] });
                 transactions.forEach(t => {
-                    if (vetMap[t.vet]) {
-                        vetMap[t.vet].balance += t.qty;
-                        vetMap[t.vet].items[t.product] = (vetMap[t.vet].items[t.product] || 0) + t.qty;
+                    if (map[t.vet]) {
+                        map[t.vet].balance += t.qty;
+                        map[t.vet].items[t.product] = (map[t.vet].items[t.product] || 0) + t.qty;
+                        map[t.vet].history.push(t);
                     }
                 });
-                return vetMap;
+                return map;
             }, [transactions, vets]);
-
-            const getVetStats = (vetName) => {
-                const vetTrans = transactions.filter(t => t.vet === vetName);
-                const balance = vetTrans.reduce((acc, t) => acc + t.qty, 0);
-                const productBalances = {};
-                vetTrans.forEach(t => {
-                    productBalances[t.product] = (productBalances[t.product] || 0) + t.qty;
-                });
-                const items = Object.keys(productBalances)
-                    .map(name => ({ name, balance: productBalances[name] }))
-                    .filter(i => i.balance !== 0);
-                return { balance, history: [...vetTrans].reverse(), productBalances: items };
-            };
 
             const handleTransaction = () => {
                 if (!formVet || !formProduct || !formQty) return;
@@ -178,158 +181,148 @@
                 
                 setShowAddForm(false);
                 setFormQty('');
-                setFormDate(new Date().toISOString().split('T')[0]);
+            };
+
+            // Müşteri İsmi Güncelleme
+            const renameVet = (oldName, newName) => {
+                const cleanNewName = newName.trim().toUpperCase();
+                if (!cleanNewName || vets.includes(cleanNewName)) return;
+
+                // Müşteri listesini güncelle
+                setVets(vets.map(v => v === oldName ? cleanNewName : v));
+
+                // Tüm işlem geçmişini yeni isme aktar
+                setTransactions(transactions.map(t => t.vet === oldName ? { ...t, vet: cleanNewName } : t));
+                
+                setEditingItem(null);
+                setNewNameInput('');
+            };
+
+            // Müşteri Silme
+            const deleteVet = (name) => {
+                setVets(vets.filter(v => v !== name));
+                // İşlem geçmişi korunabilir veya silinebilir, burada listeden kalkması yeterli
+                setDeleteConfirm(null);
+            };
+
+            const changeView = (tab) => {
+                setSelectedVet(null);
+                setActiveTab(tab);
             };
 
             return (
                 <div className="app-shell">
-                    {/* Üst Başlık Çubuğu */}
-                    <header className="bg-white px-5 flex items-center justify-between border-b border-slate-100 z-50 h-16">
-                        <div className="flex items-center gap-3 overflow-hidden">
-                            {(selectedVet || selectedProduct || activeTab !== 'home') && (
-                                <button onClick={() => { setSelectedVet(null); setSelectedProduct(null); if(!selectedVet && !selectedProduct) setActiveTab('home'); }} className="p-2 active:bg-slate-50 rounded-full transition-all">
-                                    <Icon name="chevron-left" size={24} className="text-slate-600" />
+                    {/* ÜST PANEL */}
+                    <header className="bg-indigo-700 text-white flex items-center justify-between px-5 pt-[var(--sat)] shadow-md z-40">
+                        <div className="flex items-center gap-4 overflow-hidden">
+                            {(selectedVet || activeTab !== 'home') ? (
+                                <button onClick={() => { setSelectedVet(null); if(!selectedVet) setActiveTab('home'); }} className="p-2 btn-active">
+                                    <Icon name="arrow-left" size={24} />
                                 </button>
+                            ) : (
+                                <Icon name="layout-grid" size={24} />
                             )}
-                            <div>
-                                <h1 className="text-lg font-extrabold text-slate-900 truncate tracking-tight">
-                                    {selectedVet || (selectedProduct ? selectedProduct.name : activeTab === 'settings' ? 'Veri Yönetimi' : activeTab === 'vets' ? 'Müşteri Listesi' : activeTab === 'stock' ? 'Mevcut Durum' : 'Borç Defteri')}
-                                </h1>
-                            </div>
+                            <h1 className="text-xl font-bold truncate tracking-tight uppercase">
+                                {selectedVet || (activeTab === 'settings' ? 'Sistem' : activeTab === 'vets' ? 'Müşteriler' : activeTab === 'stock' ? 'Depo' : 'Borç Defteri')}
+                            </h1>
                         </div>
-                        <button onClick={() => setActiveTab('settings')} className={`p-2 transition-all ${activeTab === 'settings' ? 'text-indigo-600' : 'text-slate-400'}`}>
-                            <Icon name="database" size={20}/>
-                        </button>
+                        <button onClick={() => changeView('settings')} className="p-2 btn-active opacity-80"><Icon name="database" size={20}/></button>
                     </header>
 
-                    {/* Kaydırılabilir İçerik */}
-                    <main className="scroll-area no-scrollbar p-5 bg-white">
+                    {/* ANA İÇERİK */}
+                    <main className="scroll-area no-scrollbar">
                         {activeTab === 'settings' ? (
-                            <div className="space-y-4 animate-in fade-in">
-                                <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-4 shadow-sm">
-                                    <h3 className="font-bold text-slate-800 px-1">Yedekleme İşlemleri</h3>
+                            <div className="space-y-4 fade-in">
+                                <div className="p-6 bg-white rounded-[2rem] border border-slate-100 shadow-sm space-y-4 text-center">
+                                    <h3 className="font-bold text-slate-800 text-sm uppercase tracking-widest px-1">Veri Yönetimi</h3>
                                     <button onClick={() => {
-                                        const data = {vets, products, transactions};
-                                        const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
-                                        const link = document.createElement('a');
-                                        link.href = URL.createObjectURL(blob);
-                                        link.download = `defter_yedek.json`;
-                                        link.click();
-                                    }} className="w-full flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-200 font-bold active:bg-slate-50 transition-all text-indigo-600">
-                                        <div className="flex items-center gap-3"><Icon name="download" size={20}/> Yedek Al</div>
-                                        <Icon name="chevron-right" size={16} className="text-slate-300"/>
+                                        const blob = new Blob([JSON.stringify({vets, products, transactions})], {type: 'application/json'});
+                                        const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `yedek.json`; link.click();
+                                    }} className="w-full flex items-center justify-between p-5 bg-indigo-50 rounded-3xl font-bold text-indigo-700 btn-active">
+                                        <div className="flex items-center gap-3"><Icon name="download" /> Yedek İndir</div><Icon name="chevron-right" size={16}/>
                                     </button>
-                                    <button onClick={() => fileInputRef.current.click()} className="w-full flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-200 font-bold active:bg-slate-50 transition-all text-emerald-600">
-                                        <div className="flex items-center gap-3"><Icon name="upload" size={20}/> Yedekten Yükle</div>
-                                        <Icon name="chevron-right" size={16} className="text-slate-300"/>
-                                    </button>
-                                    <input type="file" ref={fileInputRef} onChange={(e) => {
-                                        const file = e.target.files[0];
-                                        if(!file) return;
-                                        const reader = new FileReader();
-                                        reader.onload = (event) => {
-                                            try {
-                                                const content = JSON.parse(event.target.result);
-                                                if(content.vets) {
-                                                    setVets(content.vets);
-                                                    setProducts(content.products);
-                                                    setTransactions(content.transactions);
-                                                    alert("Geri yükleme başarılı!");
-                                                }
-                                            } catch (err) { alert("Hatalı dosya!"); }
-                                        };
-                                        reader.readAsText(file);
-                                    }} className="hidden" accept=".json"/>
+                                    <button onClick={() => {if(confirm('HER ŞEY SİLİNECEK!')) {localStorage.clear(); window.location.reload();}}} className="w-full p-4 bg-rose-50 text-rose-600 rounded-2xl font-bold flex items-center justify-center gap-3 mt-4 btn-active"><Icon name="trash-2" /> Sistemi Sıfırla</button>
                                 </div>
                             </div>
                         ) : selectedVet ? (
-                            <div className="space-y-6 animate-in slide-in-from-right pb-10">
+                            <div className="space-y-6 fade-in pb-10">
                                 <div className="p-8 bg-indigo-600 rounded-[2.5rem] text-center text-white shadow-xl relative overflow-hidden">
-                                    <h2 className="text-2xl font-black">{selectedVet}</h2>
-                                    <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest mt-6">Net Bakiye</p>
-                                    <p className="text-6xl font-black mt-2 leading-none">{stats[selectedVet]?.balance > 0 ? `+${stats[selectedVet].balance}` : stats[selectedVet].balance}</p>
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
+                                    <h2 className="text-2xl font-black uppercase tracking-tight">{selectedVet}</h2>
+                                    <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest mt-6">Toplam Borç Bakiyesi</p>
+                                    <p className="text-6xl font-black mt-1 leading-none">
+                                        {vetStats[selectedVet]?.balance > 0 ? `+${vetStats[selectedVet].balance}` : vetStats[selectedVet]?.balance || 0}
+                                    </p>
                                 </div>
 
                                 <div className="space-y-3">
-                                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 flex items-center gap-2"><Icon name="box" size={14}/> Ürün Dağılımı</h3>
-                                    {getVetStats(selectedVet).productBalances.map((item) => (
-                                        <div key={item.name} className="flex justify-between p-5 bg-slate-50 border border-slate-100 rounded-3xl shadow-sm">
-                                            <span className="font-bold text-slate-700">{item.name}</span>
-                                            <span className={`font-black ${item.balance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{item.balance > 0 ? `+${item.balance}` : item.balance}</span>
+                                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 flex items-center gap-2"><Icon name="box" size={14}/> Borç Dağılımı</h3>
+                                    {Object.entries(vetStats[selectedVet]?.items || {}).filter(([_,v])=>v!==0).map(([name, bal]) => (
+                                        <div key={name} className="flex justify-between p-5 bg-white border border-slate-100 rounded-[1.5rem] shadow-sm">
+                                            <span className="font-bold text-slate-700 uppercase text-sm">{name}</span>
+                                            <span className={`font-black ${bal > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{bal > 0 ? `+${bal}` : bal}</span>
                                         </div>
                                     ))}
                                 </div>
 
-                                <div className="space-y-3">
+                                <div className="space-y-2">
                                     <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 flex items-center gap-2"><Icon name="history" size={14}/> İşlem Geçmişi</h3>
-                                    {getVetStats(selectedVet).history.map(t => (
-                                        <div key={t.id} className="bg-white p-4 rounded-2xl border border-slate-100 flex items-center justify-between shadow-sm">
-                                            <div className="flex items-center gap-3 overflow-hidden text-left">
-                                                <div className={`p-2 rounded-xl shrink-0 ${t.qty > 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                                                    <Icon name={t.qty > 0 ? "arrow-up-right" : "arrow-down-left"} size={20}/>
-                                                </div>
+                                    {[...(vetStats[selectedVet]?.history || [])].reverse().map(t => (
+                                        <div key={t.id} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                                            <div className="flex items-center gap-3 text-left overflow-hidden">
+                                                <div className={`p-2 rounded-xl shrink-0 ${t.qty > 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}><Icon name={t.qty > 0 ? "arrow-up-right" : "arrow-down-left"} size={18}/></div>
                                                 <div className="overflow-hidden">
-                                                    <p className="text-sm font-bold text-slate-800 truncate">{t.product}</p>
+                                                    <p className="text-sm font-bold text-slate-800 uppercase truncate">{t.product}</p>
                                                     <p className="text-[10px] text-slate-400 font-bold">{t.date}</p>
                                                 </div>
                                             </div>
-                                            <span className={`font-black text-lg shrink-0 ml-2 ${t.qty > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{t.qty > 0 ? `+${t.qty}` : t.qty}</span>
+                                            <span className={`font-black text-lg ${t.qty > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{t.qty > 0 ? `+${t.qty}` : t.qty}</span>
                                         </div>
                                     ))}
                                 </div>
                             </div>
                         ) : (
-                            <div className="space-y-6 animate-in fade-in pb-10">
+                            <div className="space-y-6 fade-in pb-4">
                                 {activeTab === 'home' && (
                                     <div className="space-y-6">
                                         <div className="grid grid-cols-2 gap-4">
-                                            <div onClick={() => setActiveTab('stock')} className="p-5 bg-slate-900 rounded-[2.2rem] text-white shadow-lg active:scale-95 transition-transform">
-                                                <Icon name="package" className="opacity-40 mb-2" size={24}/>
-                                                <p className="text-[10px] font-bold opacity-60 uppercase mb-1">Depo Mevcut</p>
-                                                <p className="text-3xl font-black tracking-tight">{products.reduce((a,b)=>a+b.stock,0)}</p>
-                                            </div>
-                                            <div onClick={() => setActiveTab('vets')} className="p-5 bg-indigo-600 rounded-[2.2rem] text-white shadow-lg active:scale-95 transition-transform text-center">
-                                                <Icon name="users" className="opacity-40 mb-2" size={24}/>
-                                                <p className="text-[10px] font-bold opacity-60 uppercase mb-1">Müşteriler</p>
-                                                <p className="text-3xl font-black tracking-tight">{vets.length}</p>
-                                            </div>
+                                            <div onClick={() => changeView('stock')} className="p-6 bg-slate-900 rounded-[2.2rem] text-white shadow-lg btn-active"><Icon name="package" className="opacity-40 mb-2" /><p className="text-[10px] font-bold opacity-60 uppercase mb-1">DEPO</p><p className="text-3xl font-black">{products.reduce((a,b)=>a+b.stock,0)}</p></div>
+                                            <div onClick={() => changeView('vets')} className="p-6 bg-indigo-600 rounded-[2.2rem] text-white shadow-lg btn-active text-center"><Icon name="users" className="opacity-40 mb-2" /><p className="text-[10px] font-bold opacity-60 uppercase mb-1">MÜŞTERİ</p><p className="text-3xl font-black">{vets.length}</p></div>
                                         </div>
-                                        <div className="bg-slate-50 p-6 rounded-[2.2rem] border border-slate-100">
-                                            <h2 className="font-extrabold text-slate-800 text-lg mb-6 flex items-center gap-2"><Icon name="alert-circle" size={20} className="text-rose-500"/> Borçlu Listesi</h2>
+                                        <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                                            <h2 className="font-extrabold text-slate-800 text-lg mb-6 flex items-center gap-2"><Icon name="alert-circle" size={18} className="text-rose-500"/> Borçlular</h2>
                                             <div className="space-y-3">
-                                                {vets.map(v => ({ name: v, bal: stats[v]?.balance || 0 }))
-                                                    .filter(v => v.bal > 0).sort((a,b)=>b.bal-a.bal).slice(0,4).map((v) => (
-                                                    <div key={v.name} onClick={() => setSelectedVet(v.name)} className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-100 active:bg-slate-50 transition-all">
-                                                        <span className="font-bold text-slate-700">{v.name}</span>
-                                                        <div className="bg-rose-50 px-3 py-1 rounded-full"><span className="font-black text-rose-600">+{v.bal}</span></div>
+                                                {vets.map(v => ({ name: v, bal: vetStats[v]?.balance || 0 })).filter(v => v.bal > 0).sort((a,b)=>b.bal-a.bal).slice(0,5).map((v) => (
+                                                    <div key={v.name} onClick={() => setSelectedVet(v.name)} className="flex justify-between items-center bg-slate-50 p-5 rounded-2xl border border-slate-100/50 btn-active">
+                                                        <span className="font-bold text-slate-700 uppercase text-sm">{v.name}</span><div className="bg-rose-50 px-4 py-1 rounded-full"><span className="font-black text-rose-600">+{v.bal}</span></div>
                                                     </div>
                                                 ))}
                                             </div>
                                         </div>
-                                        <button onClick={() => setShowAddForm(true)} className="w-full bg-slate-900 text-white p-6 rounded-[2rem] flex items-center justify-center gap-4 shadow-xl active:scale-95 transition-all">
-                                            <Icon name="plus-circle" size={24}/>
-                                            <span className="font-black text-lg uppercase tracking-tight">Yeni Kayıt İşle</span>
-                                        </button>
+                                        <button onClick={() => setShowAddForm(true)} className="w-full bg-slate-900 text-white p-6 rounded-[2rem] flex items-center justify-center gap-4 shadow-xl btn-active"><Icon name="plus-circle" /><span className="font-black text-lg uppercase tracking-widest">YENİ İŞLEM GİR</span></button>
                                     </div>
                                 )}
                                 {activeTab === 'stock' && (
                                     <div className="space-y-4">
-                                        <button onClick={() => setShowQuickAdd('product')} className="w-full p-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold flex items-center justify-center gap-2 active:bg-slate-50 transition-all"><Icon name="plus" size={18}/> Yeni Ürün</button>
+                                        <button onClick={() => setShowQuickAdd('product')} className="w-full p-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold flex items-center justify-center gap-2 btn-active"><Icon name="plus" /> Yeni Ürün</button>
                                         {products.map(p => (
-                                            <div key={p.id} onClick={() => setSelectedProduct(p)} className="p-5 bg-slate-50 rounded-3xl flex items-center justify-between border border-slate-100 shadow-sm active:bg-slate-100">
-                                                <div className="flex items-center gap-4 text-left"><div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-xs uppercase shrink-0">{p.name[0]}</div><p className="font-bold text-slate-800 uppercase truncate">{p.name}</p></div>
-                                                <p className="text-2xl font-black text-indigo-600 shrink-0">{p.stock}</p>
+                                            <div key={p.id} className="p-5 bg-white rounded-[1.5rem] flex items-center justify-between border border-slate-100 shadow-sm active:bg-slate-50 btn-active">
+                                                <div className="flex items-center gap-4 text-left flex-1"><div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-xs uppercase shrink-0">{p.name[0]}</div><p className="font-bold text-slate-800 uppercase truncate">{p.name}</p></div>
+                                                <div className="flex items-center gap-4"><p className="text-2xl font-black text-indigo-600">{p.stock}</p></div>
                                             </div>
                                         ))}
                                     </div>
                                 )}
                                 {activeTab === 'vets' && (
                                     <div className="space-y-3">
-                                        <button onClick={() => setShowQuickAdd('vet')} className="w-full p-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold flex items-center justify-center gap-2 active:bg-slate-50 transition-all"><Icon name="user-plus" size={18}/> Yeni Müşteri</button>
+                                        <button onClick={() => setShowQuickAdd('vet')} className="w-full p-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold flex items-center justify-center gap-2 btn-active"><Icon name="user-plus" /> Yeni Müşteri Ekle</button>
                                         {vets.map(v => (
-                                            <div key={v} onClick={() => setSelectedVet(v)} className="p-5 bg-slate-50 rounded-3xl flex items-center justify-between border border-slate-100 shadow-sm active:bg-slate-100">
-                                                <div className="flex items-center gap-4 text-left"><div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold uppercase shrink-0">{v[0]}</div><p className="font-bold text-slate-800 truncate">{v}</p></div>
-                                                <p className={`text-lg font-black shrink-0 ${stats[v]?.balance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{stats[v]?.balance > 0 ? `+${stats[v].balance}` : stats[v].balance}</p>
+                                            <div key={v} className="p-5 bg-white rounded-[1.5rem] flex items-center justify-between border border-slate-100 shadow-sm btn-active">
+                                                <div onClick={() => setSelectedVet(v)} className="flex items-center gap-4 text-left flex-1"><div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold uppercase shrink-0">{v[0]}</div><p className="font-bold text-slate-800 truncate uppercase">{v}</p></div>
+                                                <div className="flex items-center gap-2">
+                                                    <button onClick={() => { setEditingItem({ type: 'vet', oldName: v }); setNewNameInput(v); }} className="p-2 text-indigo-600 bg-indigo-50 rounded-xl"><Icon name="edit-2" size={16}/></button>
+                                                    <button onClick={() => setDeleteConfirm({ type: 'vet', name: v })} className="p-2 text-rose-600 bg-rose-50 rounded-xl"><Icon name="trash-2" size={16}/></button>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
@@ -337,15 +330,15 @@
                                 {activeTab === 'history' && (
                                     <div className="space-y-3">
                                         {transactions.slice().reverse().map(t => (
-                                            <div key={t.id} className="bg-white p-4 rounded-2xl border border-slate-100 flex items-center justify-between shadow-sm transition-all active:scale-[0.98]">
+                                            <div key={t.id} className="bg-white p-4 rounded-[1.5rem] border border-slate-100 flex items-center justify-between shadow-sm btn-active">
                                                 <div className="flex items-center gap-3 overflow-hidden text-left">
-                                                    <div className={`p-2 rounded-xl shrink-0 ${t.qty > 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}><Icon name={t.qty > 0 ? "arrow-up-right" : "arrow-down-left"} size={20}/></div>
+                                                    <div className={`p-2 rounded-xl shrink-0 ${t.qty > 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}><Icon name={t.qty > 0 ? "arrow-up-right" : "arrow-down-left"} size={18}/></div>
                                                     <div className="overflow-hidden">
-                                                        <p className="text-sm font-bold text-slate-900 truncate">{t.vet}</p>
-                                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{t.product} • {t.date}</p>
+                                                        <p className="text-sm font-bold text-slate-900 truncate uppercase">{t.vet}</p>
+                                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{t.product} • {t.date}</p>
                                                     </div>
                                                 </div>
-                                                <span className={`font-black text-lg shrink-0 ml-2 ${t.qty > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{t.qty > 0 ? `+${t.qty}` : t.qty}</span>
+                                                <span className={`font-black text-lg ${t.qty > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{t.qty > 0 ? `+${t.qty}` : t.qty}</span>
                                             </div>
                                         ))}
                                     </div>
@@ -354,85 +347,74 @@
                         )}
                     </main>
 
-                    {/* Alt Navigasyon Menüsü */}
-                    <nav className="bg-white border-t border-slate-100 h-20 shrink-0 flex justify-around items-center px-4 shadow-[0_-15px_40px_rgba(0,0,0,0.04)] z-50">
-                        <button onClick={() => { setActiveTab('home'); setSelectedVet(null); setSelectedProduct(null); }} className={`p-4 transition-all duration-200 ${activeTab === 'home' && !selectedVet && !selectedProduct ? 'tab-active' : 'text-slate-300'}`}><Icon name="layout-dashboard" size={26}/></button>
-                        <button onClick={() => { setActiveTab('stock'); setSelectedVet(null); setSelectedProduct(null); }} className={`p-4 transition-all duration-200 ${activeTab === 'stock' ? 'tab-active' : 'text-slate-300'}`}><Icon name="package" size={26}/></button>
-                        <button onClick={() => { setActiveTab('vets'); setSelectedVet(null); setSelectedProduct(null); }} className={`p-4 transition-all duration-200 ${activeTab === 'vets' ? 'tab-active' : 'text-slate-300'}`}><Icon name="users" size={26}/></button>
-                        <button onClick={() => { setActiveTab('history'); setSelectedVet(null); setSelectedProduct(null); }} className={`p-4 transition-all duration-200 ${activeTab === 'history' ? 'tab-active' : 'text-slate-300'}`}><Icon name="clipboard-list" size={26}/></button>
+                    {/* ALT MENÜ */}
+                    <nav className="bg-white border-t border-slate-100 flex justify-around items-center px-4 pb-[calc(10px+var(--sab))] z-50 shadow-[0_-8px_20px_rgba(0,0,0,0.04)] h-[80px]">
+                        <button onClick={() => changeView('home')} className={`nav-item flex-1 ${activeTab === 'home' && !selectedVet ? 'active' : ''}`}><div className="nav-indicator"><Icon name="home" /></div><span className="text-[10px] font-bold">Panel</span></button>
+                        <button onClick={() => changeView('stock')} className={`nav-item flex-1 ${activeTab === 'stock' ? 'active' : ''}`}><div className="nav-indicator"><Icon name="package" /></div><span className="text-[10px] font-bold">Depo</span></button>
+                        <button onClick={() => changeView('vets')} className={`nav-item flex-1 ${activeTab === 'vets' ? 'active' : ''}`}><div className="nav-indicator"><Icon name="users" /></div><span className="text-[10px] font-bold">Müşteriler</span></button>
+                        <button onClick={() => changeView('history')} className={`nav-item flex-1 ${activeTab === 'history' ? 'active' : ''}`}><div className="nav-indicator"><Icon name="clipboard-list" /></div><span className="text-[10px] font-bold">İşlemler</span></button>
                     </nav>
 
-                    {/* MODAL: YENİ KAYIT (DEPO GİRİŞİ SİLİNDİ) */}
+                    {/* MODAL: YENİ KAYIT */}
                     {showAddForm && (
-                        <div className="fixed inset-0 bg-slate-900/80 z-[100] flex items-end backdrop-blur-sm p-0 m-0 transition-opacity">
-                            <div className="bg-white w-full rounded-t-[3rem] p-8 shadow-2xl animate-in slide-in-from-bottom duration-500 max-h-[95dvh] overflow-y-auto pb-safe">
+                        <div className="fixed inset-0 bg-slate-900/80 z-[100] flex items-end backdrop-blur-sm p-0 m-0">
+                            <div className="bg-white w-full rounded-t-[3rem] p-8 shadow-2xl animate-in slide-in-from-bottom max-h-[95dvh] overflow-y-auto pb-[calc(20px+var(--sab))] no-scrollbar">
                                 <div className="w-16 h-1.5 bg-slate-100 rounded-full mx-auto mb-8"></div>
-                                <h3 className="text-2xl font-black text-slate-800 mb-8 flex items-center gap-3"><Icon name="edit-3" size={24} className="text-indigo-600"/> Cari İşlem Gir</h3>
-                                
+                                <h3 className="text-2xl font-black text-slate-800 mb-8 flex items-center gap-3 uppercase tracking-tight text-center justify-center"><Icon name="edit-3" className="text-indigo-600"/> Cari İşlem Gir</h3>
                                 <div className="space-y-5">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-extrabold text-slate-400 uppercase ml-2 tracking-widest text-center block">Tarih</label>
-                                        <input type="date" className="w-full p-5 bg-slate-100 border-none rounded-[1.5rem] font-bold outline-none text-center" value={formDate} onChange={e => setFormDate(e.target.value)} />
-                                    </div>
-                                    <div className="space-y-1 text-left">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Müşteri Seçiniz</label>
-                                        <select className="w-full p-5 bg-slate-100 border-none rounded-[1.5rem] font-bold outline-none appearance-none shadow-inner" value={formVet} onChange={e => setFormVet(e.target.value)}>
-                                            <option value="">Seçiniz</option>
-                                            {vets.map((v) => <option key={v} value={v}>{v}</option>)}
-                                        </select>
-                                    </div>
-                                    <div className="space-y-1 text-left">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Ürün Seçiniz</label>
-                                        <select className="w-full p-5 bg-slate-100 border-none rounded-[1.5rem] font-bold outline-none appearance-none shadow-inner" value={formProduct} onChange={e => setFormProduct(e.target.value)}>
-                                            <option value="">Ürün Seçiniz</option>
-                                            {products.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-                                        </select>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-1 text-left">
-                                            <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Miktar</label>
-                                            <input type="number" className="w-full p-5 bg-slate-100 border-none rounded-[1.5rem] font-black text-center" placeholder="0" value={formQty} onChange={e => setFormQty(e.target.value)}/>
-                                        </div>
-                                        <div className="space-y-1 text-left">
-                                            <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Tür</label>
-                                            <select className="w-full p-5 bg-slate-100 border-none rounded-[1.5rem] font-bold text-indigo-600 text-center shadow-inner appearance-none" value={formType} onChange={e => setFormType(e.target.value)}>
-                                                <option value="borclanma">BORÇLANMA (+)</option>
-                                                <option value="odeme">ÖDEME (-)</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-4 pt-6 pb-4">
-                                        <button onClick={() => setShowAddForm(false)} className="flex-1 bg-slate-50 p-5 rounded-[1.5rem] font-bold text-slate-400 active:bg-slate-100 transition-colors">Vazgeç</button>
-                                        <button onClick={handleTransaction} className="flex-[2] bg-indigo-600 text-white p-5 rounded-[1.5rem] font-black shadow-xl uppercase tracking-tight transition-transform active:scale-95">Tamamla</button>
-                                    </div>
+                                    <div className="space-y-1 text-left"><label className="text-[10px] font-bold text-slate-400 uppercase ml-3">Tarih</label><input type="date" className="w-full p-5 bg-slate-50 border-none rounded-[1.5rem] font-bold outline-none text-center shadow-inner" value={formDate} onChange={e => setFormDate(e.target.value)} /></div>
+                                    <div className="space-y-1 text-left"><label className="text-[10px] font-bold text-slate-400 uppercase ml-3">Müşteri</label><select className="w-full p-5 bg-slate-50 border-none rounded-[1.5rem] font-bold outline-none appearance-none shadow-inner" value={formVet} onChange={e => setFormVet(e.target.value)}><option value="">Seçiniz</option>{vets.map((v) => <option key={v} value={v}>{v}</option>)}</select></div>
+                                    <div className="space-y-1 text-left"><label className="text-[10px] font-bold text-slate-400 uppercase ml-3">Ürün</label><select className="w-full p-5 bg-slate-50 border-none rounded-[1.5rem] font-bold outline-none appearance-none shadow-inner" value={formProduct} onChange={e => setFormProduct(e.target.value)}><option value="">Seçiniz</option>{products.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}</select></div>
+                                    <div className="grid grid-cols-2 gap-4"><div className="space-y-1 text-left"><label className="text-[10px] font-bold text-slate-400 uppercase ml-3">Miktar</label><input type="number" className="w-full p-5 bg-slate-50 border-none rounded-[1.5rem] font-black text-center shadow-inner" placeholder="0" value={formQty} onChange={e => setFormQty(e.target.value)}/></div><div className="space-y-1 text-left"><label className="text-[10px] font-bold text-slate-400 uppercase ml-3">Tür</label><select className="w-full p-5 bg-slate-100 border-none rounded-[1.5rem] font-bold text-indigo-600 text-center shadow-inner appearance-none" value={formType} onChange={e => setFormType(e.target.value)}><option value="borclanma">BORÇLANMA (+)</option><option value="odeme">ÖDEME (-)</option></select></div></div>
+                                    <div className="flex gap-4 pt-6 pb-4"><button onClick={() => setShowAddForm(false)} className="flex-1 bg-slate-50 p-5 rounded-[1.5rem] font-bold text-slate-400 btn-active uppercase text-sm">İptal</button><button onClick={handleTransaction} className="flex-[2] bg-indigo-600 text-white p-5 rounded-[1.5rem] font-black shadow-xl btn-active uppercase">Kaydet</button></div>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* Hızlı Ekleme Modalları */}
-                    {showQuickAdd && (
+                    {/* MODAL: HIZLI EKLEME / DÜZENLEME */}
+                    {(showQuickAdd || editingItem) && (
                         <div className="fixed inset-0 bg-slate-900/80 z-[110] flex items-center justify-center p-6 backdrop-blur-sm">
-                            <div className="bg-white w-full rounded-[32px] p-8 shadow-2xl animate-in zoom-in transition-all">
-                                <h3 className="text-xl font-black mb-6 text-slate-800">{showQuickAdd === 'vet' ? 'Yeni Müşteri' : 'Yeni Ürün'}</h3>
-                                <input type="text" className="w-full p-5 bg-slate-100 border-none rounded-[1.5rem] mb-8 font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all" placeholder="Adı giriniz..." value={newNameInput} onChange={e => setNewNameInput(e.target.value)}/>
+                            <div className="bg-white w-full rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in">
+                                <h3 className="text-xl font-black mb-6 text-slate-800 uppercase tracking-tight text-center">
+                                    {editingItem ? 'İsim Düzenle' : (showQuickAdd === 'vet' ? 'Yeni Müşteri' : 'Yeni Ürün')}
+                                </h3>
+                                <input type="text" className="w-full p-5 bg-slate-50 border-none rounded-[1.5rem] mb-8 font-bold outline-none uppercase shadow-inner focus:ring-4 focus:ring-indigo-500/10 transition-all" placeholder="İsim giriniz..." value={newNameInput} onChange={e => setNewNameInput(e.target.value)}/>
                                 <div className="flex gap-3">
-                                    <button onClick={() => {setShowQuickAdd(null); setNewNameInput('');}} className="flex-1 py-4 bg-slate-50 rounded-2xl font-bold text-slate-400 active:bg-slate-100">İptal</button>
+                                    <button onClick={() => {setShowQuickAdd(null); setEditingItem(null); setNewNameInput('');}} className="flex-1 py-4 bg-slate-50 rounded-2xl font-bold text-slate-400 btn-active text-sm uppercase">Vazgeç</button>
                                     <button onClick={() => {
                                         if(!newNameInput.trim()) return;
-                                        const cleanName = newNameInput.trim().toUpperCase();
-                                        if(showQuickAdd === 'vet') {
-                                            if(!vets.includes(cleanName)) setVets([...vets, cleanName]);
+                                        if(editingItem) {
+                                            renameVet(editingItem.oldName, newNameInput);
                                         } else {
-                                            if(!products.some(p => p.name === cleanName)) setProducts([...products, { id: Date.now(), name: cleanName, stock: 0 }]);
+                                            const cleanName = newNameInput.trim().toUpperCase();
+                                            if(showQuickAdd === 'vet') {
+                                                if(!vets.includes(cleanName)) setVets([...vets, cleanName]);
+                                            } else {
+                                                if(!products.some(p => p.name === cleanName)) setProducts([...products, { id: Date.now(), name: cleanName, stock: 0 }]);
+                                            }
+                                            setShowQuickAdd(null); setNewNameInput('');
                                         }
-                                        setShowQuickAdd(null); setNewNameInput('');
-                                    }} className="flex-[2] py-4 bg-slate-900 text-white rounded-2xl font-black shadow-lg uppercase transition-transform active:scale-95">Ekle</button>
+                                    }} className="flex-[2] py-4 bg-indigo-700 text-white rounded-2xl font-black shadow-lg btn-active uppercase text-sm">Onayla</button>
                                 </div>
                             </div>
                         </div>
                     )}
 
+                    {/* MODAL: SİLME ONAYI */}
+                    {deleteConfirm && (
+                        <div className="fixed inset-0 modal-backdrop z-[120] flex items-center justify-center p-6">
+                            <div className="bg-white w-full rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in">
+                                <div className="text-rose-600 bg-rose-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6"><Icon name="trash-2" size={32}/></div>
+                                <h3 className="text-xl font-black mb-2 text-slate-800 text-center">Emin misiniz?</h3>
+                                <p className="text-slate-500 text-center text-sm mb-8"><b>{deleteConfirm.name}</b> isimli müşteri listeden kaldırılacaktır.</p>
+                                <div className="flex gap-3">
+                                    <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-4 bg-slate-50 rounded-2xl font-bold text-slate-400 btn-active text-sm uppercase">Hayır</button>
+                                    <button onClick={() => deleteVet(deleteConfirm.name)} className="flex-1 py-4 bg-rose-600 text-white rounded-2xl font-black shadow-lg btn-active uppercase text-sm">Evet, Sil</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         };
