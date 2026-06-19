@@ -13,7 +13,8 @@
 
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Babel sürümü otomatik import hatalarını önlemek için güvenilir bir sürüme sabitlendi -->
+  <script src="https://unpkg.com/@babel/standalone@7.22.20/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
 
@@ -39,54 +40,78 @@
 
     .app-shell {
       display: grid;
-      grid-template-rows: 56px 1fr 68px;
+      grid-template-rows: 60px 1fr 70px;
       height: 100dvh;
       width: 100%;
       max-width: 500px;
       margin: 0 auto;
       background: white;
       position: relative;
+      box-shadow: 0 0 40px rgba(0,0,0,0.05);
     }
 
     .scroll-area { 
       overflow-y: auto; 
       -webkit-overflow-scrolling: touch; 
-      padding-bottom: 20px;
+      padding-bottom: calc(20px + env(safe-area-inset-bottom));
     }
     .no-scrollbar::-webkit-scrollbar { display: none; }
 
-    input, select, textarea { font-size: 16px !important; }
+    input, select, textarea { 
+      font-size: 16px !important; 
+      appearance: none;
+    }
 
     .icon-box {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 22px;
-      height: 22px;
+      pointer-events: none;
+      flex-shrink: 0;
     }
 
     .tab-active { color: #4f46e5; position: relative; }
     .tab-active::after {
       content: '';
       position: absolute;
-      bottom: -6px; left: 50%;
+      bottom: -8px; left: 50%;
       transform: translateX(-50%);
-      width: 5px; height: 5px;
+      width: 6px; height: 6px;
       background: #4f46e5;
       border-radius: 50%;
     }
 
-    @media (max-width: 480px) {
-      html { font-size: 14px; }
-      .app-shell { grid-template-rows: 50px 1fr 64px; }
+    .bottom-sheet {
+      animation: slideUp 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
     }
 
     .animate-in {
-      animation: fadeIn 0.25s ease-out;
+      animation: fadeIn 0.15s ease-out;
     }
     @keyframes fadeIn {
-      from { opacity: 0; transform: scale(0.98); }
+      from { opacity: 0; transform: scale(0.99); }
       to { opacity: 1; transform: scale(1); }
+    }
+
+    .btn-touch {
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .active-tap:active {
+      background-color: #f1f5f9;
+      transform: scale(0.98);
+    }
+    
+    .no-scale:active {
+      transform: none !important;
     }
   </style>
 </head>
@@ -94,75 +119,77 @@
 <body>
 <div id="root"></div>
 
-<script type="text/babel">
-  const { useState, useEffect, useMemo, useRef } = React;
+<script type="text/babel" data-presets="react">
+  /** @jsx React.createElement */
+  /** @jsxFrag React.Fragment */
 
-  const Icon = ({ name, size = 20, className = "" }) => {
+  const { useState, useEffect, useMemo, useRef, memo, useCallback } = React;
+
+  const Icon = memo(({ name, size = 20, className = "" }) => {
     const wrapperRef = useRef(null);
     useEffect(() => {
       if (window.lucide && wrapperRef.current) {
         wrapperRef.current.innerHTML = `<i data-lucide="${name}"></i>`;
         window.lucide.createIcons({
-          attrs: { size, class: className },
+          root: wrapperRef.current,
+          attrs: { size, 'class': className },
           nameAttr: 'data-lucide'
         });
       }
     }, [name, size, className]);
-    return <span ref={wrapperRef} className="icon-box"></span>;
-  };
+    return <span ref={wrapperRef} className={`icon-box ${className}`} style={{ width: size, height: size }}></span>;
+  });
 
-  const INITIAL_PRODUCTS = [
-    { id: 1, name: 'ALM', stock: 0 },
-    { id: 2, name: 'AROW', stock: 0 },
-    { id: 3, name: 'ASTOR', stock: 0 },
-    { id: 4, name: 'BARON', stock: 0 }
-  ];
-
-  const INITIAL_VETS_LEGACY = ["Abdullah Yelekçi", "Adil Aygün", "Ahmet Arıcı", "Sinan Koç", "Yusuf Kara"];
+  const ListItem = memo(({ children, onClick, className = "", noScale = false }) => (
+    <div onClick={onClick} className={`p-5 rounded-2xl flex items-center justify-between border transition-all relative shadow-sm cursor-pointer bg-slate-50 border-slate-100 ${noScale ? 'no-scale' : 'active-tap'} ${className}`}>
+      {children}
+    </div>
+  ));
 
   const normalizeName = (s) => (s || '').trim().toUpperCase();
-  const formatPhone = (s) => (s || '').trim();
   const uid = () => Date.now() + Math.floor(Math.random() * 1000);
+
+  const INITIAL_VETS = [{"id":1772033020866,"name":"ABDULLAH YELEKÇI","phone":"","limit":0},{"id":1772033021200,"name":"ADIL AYGÜN","phone":"","limit":0},{"id":1772033021160,"name":"AHMET ARICI","phone":"","limit":0},{"id":1772033021261,"name":"ZZZZZZZZ","phone":"","limit":0},{"id":1772033021215,"name":"YUSUF KARA","phone":"","limit":0},{"id":1772041970079,"name":"SAMET OK","phone":"","limit":0},{"id":1772042037123,"name":"AHMET TEKIN","phone":"","limit":0},{"id":1772042072958,"name":"AHMET KORAY KAPUCU","phone":"","limit":0},{"id":1772042127672,"name":"ARI VET KLINIĞI","phone":"","limit":0},{"id":1772042173838,"name":"BIROL YÖRÜK","phone":"","limit":0},{"id":1772042204971,"name":"BURAK TÜTÜNCÜ","phone":"","limit":0},{"id":1772042234979,"name":"CELAL DINÇ","phone":"","limit":0},{"id":1772042276850,"name":"DOĞAN CAN BILGIN","phone":"","limit":0},{"id":1772042302939,"name":"EMRULLAH SARI","phone":"","limit":0},{"id":1772042326803,"name":"ERDEM ŞENTÜRK","phone":"","limit":0},{"id":1772042346106,"name":"EREN ÖZ","phone":"","limit":0},{"id":1772042378938,"name":"EYÜP SABRI ŞAHIN","phone":"","limit":0},{"id":1772042405108,"name":"FARUK ÖZDEMIR","phone":"","limit":0},{"id":1772042429100,"name":"FATIH TELLI","phone":"","limit":0},{"id":1772042452171,"name":"FEHMI INAN","phone":"","limit":0},{"id":1772042484934,"name":"FERIDUN GÜGÜK","phone":"","limit":0},{"id":1772042517034,"name":"HASVET KLIN","phone":"","limit":0},{"id":1772042539532,"name":"İRFAN GÜNGÖR","phone":"","limit":0},{"id":1772042569328,"name":"İSMAIL PORTAKAL","phone":"","limit":0},{"id":1772042613420,"name":"İSRAFIL ÇATAKKAYA","phone":"","limit":0},{"id":1772042643225,"name":"KASTAMONU DAMIZLIK","phone":"","limit":0},{"id":1772042674548,"name":"MAHMUT ATASEVEN","phone":"","limit":0},{"id":1772042702486,"name":"MEHMET MÖRÜKÇÜ","phone":"","limit":0},{"id":1772042723909,"name":"MERT ÖZKÖK","phone":"","limit":0},{"id":1772042753427,"name":"MESUT MUSAOĞLU","phone":"","limit":0},{"id":1772042782038,"name":"MÜCAHIT BIDECI","phone":"","limit":0},{"id":1772042808442,"name":"ONUR OĞUZ","phone":"","limit":0},{"id":1772042832769,"name":"ORHAN ARLI","phone":"","limit":0},{"id":1772042859098,"name":"ORHAN ÖZKAN","phone":"","limit":0},{"id":1772042883183,"name":"OSMAN TANIŞ","phone":"","limit":0},{"id":1772042911772,"name":"OSMAN UÇĞUN","phone":"","limit":0},{"id":1772042933546,"name":"ÖMER ŞAHIN","phone":"","limit":0},{"id":1772042956497,"name":"RAMAZAN YAMAN","phone":"","limit":0},{"id":1772042986968,"name":"SAIT EMRE ÇELIK","phone":"","limit":0},{"id":1772043009681,"name":"SALIH DAĞ","phone":"","limit":0},{"id":1772043035527,"name":"SEDAT BAL","phone":"","limit":0},{"id":1772043070882,"name":"SEYIT ALI ÇOLAKOĞLU","phone":"","limit":0},{"id":1772043095956,"name":"SINAN KOÇ","phone":"","limit":0},{"id":1772043127658,"name":"TAMER BEYAZ TOPRAK","phone":"","limit":0},{"id":1772043152730,"name":"TARIK KÖMÜRCÜ","phone":"","limit":0},{"id":1772043174568,"name":"TARIK ŞANAL","phone":"","limit":0},{"id":1772043196913,"name":"VOLKAN DINLER","phone":"","limit":0},{"id":1772043229859,"name":"YUNUSEMRE KONUKSEVER","phone":"","limit":0},{"id":1772043262106,"name":"YUNUS ÖZDEMIR","phone":"","limit":0},{"id":1772043281379,"name":"ZZZZZZZZZZZZ","phone":"","limit":0},{"id":1772043304205,"name":"ZAFER MUTLU","phone":"","limit":0},{"id":1772043330253,"name":"ABDURRAHMAN AKBULUT","phone":"","limit":0},{"id":1772043352144,"name":"FARUK ŞANOĞLU","phone":"","limit":0},{"id":1772043375675,"name":"RIDVAN HELVACI","phone":"","limit":0},{"id":1772043400240,"name":"MEHMET AKKUL","phone":"","limit":0},{"id":1772043427845,"name":"MUSTAFA ERGÜN","phone":"","limit":0},{"id":1772043464045,"name":"YAŞAM VET KLINIĞI","phone":"","limit":0},{"id":1775740056654,"name":"FARUK ÖZCAN","phone":"","limit":0},{"id":1776069494525,"name":"ONUR ÖZCAN","phone":"","limit":0},{"id":1777288327815,"name":"MURAT YILMAZ","phone":"","limit":0},{"id":1778262036889,"name":"CEYHAN AKDAĞ","phone":"","limit":0}];
+
+  const INITIAL_PRODUCTS = [{"id":1,"name":"ALM","stock":400},{"id":3,"name":"ASTOR","stock":100},{"id":4,"name":"BARON","stock":360},{"id":1772035860264,"name":"VLUTLICH","stock":10},{"id":1772043556297,"name":"EXCALIBUR","stock":-20},{"id":1772043621220,"name":"ECHO","stock":180},{"id":1772043643284,"name":"EGIDIO","stock":80},{"id":1772043660955,"name":"ELDIVEN","stock":0},{"id":1772043678434,"name":"FABIO","stock":40},{"id":1772043724306,"name":"HUXLEY","stock":120},{"id":1772043750717,"name":"HENDRIX","stock":1180},{"id":1772043767458,"name":"HERON","stock":120},{"id":1772043792428,"name":"HOŞLAN","stock":160},{"id":1772043810586,"name":"İLTIS","stock":900},{"id":1772043827146,"name":"JORKY","stock":100},{"id":1772043850829,"name":"KOJAKT","stock":80},{"id":1772043869169,"name":"LEGENT","stock":0},{"id":1772043888351,"name":"MADOC","stock":480},{"id":1772043916666,"name":"MAGNIFICENT","stock":500},{"id":1772043935132,"name":"MALLARCO","stock":160},{"id":1772043951436,"name":"MANDLL","stock":40},{"id":1772043969058,"name":"MANIAC","stock":20},{"id":1772043984528,"name":"MANNY","stock":0},{"id":1772044003353,"name":"MARADONA","stock":720},{"id":1772044016315,"name":"MILES","stock":100},{"id":1772044040817,"name":"NASHVILLE","stock":560},{"id":1772044060441,"name":"NIRVANA","stock":40},{"id":1772044076984,"name":"NIXON","stock":540},{"id":1772044094344,"name":"ORTEGA","stock":40},{"id":1772044112582,"name":"PAVAROTTI","stock":40},{"id":1772044132014,"name":"PELICAN","stock":100},{"id":1772044157971,"name":"PISTOLE KILIFI","stock":0},{"id":1772044175730,"name":"PIZZARO","stock":40},{"id":1772044195206,"name":"PRODGY","stock":400},{"id":1772044214055,"name":"RANGER","stock":220},{"id":1772044230809,"name":"ROCCO","stock":340},{"id":1772044252336,"name":"RONALDO","stock":220},{"id":1772044269752,"name":"SAMSUN","stock":940},{"id":1772044285805,"name":"SERGIO","stock":380},{"id":1772044303009,"name":"SOLFEUR","stock":80},{"id":1772044318733,"name":"TIMUR","stock":230},{"id":1772044329672,"name":"TABLET","stock":340},{"id":1772044346776,"name":"VICTOR","stock":280},{"id":1772044376758,"name":"VILLEROY","stock":0},{"id":1772044409214,"name":"WIKIPEDIA","stock":100},{"id":1772044429045,"name":"WILDPARK","stock":20},{"id":1772044448170,"name":"ZOLTAN","stock":140},{"id":1772044465181,"name":"ZORRO","stock":500},{"id":1772044521483,"name":"MILANO","stock":160},{"id":1772044541226,"name":"BIG","stock":600},{"id":1772044554850,"name":"NUT","stock":380},{"id":1773137775336,"name":"CHIANTI","stock":0},{"id":1773161632197,"name":"CEINTUR ŞAROLE","stock":40},{"id":1775724140972,"name":"MAREDO","stock":100},{"id":1775724152680,"name":"EDEN","stock":80},{"id":1775724166932,"name":"HEINFLES","stock":260},{"id":1776082473943,"name":"TITUS","stock":0},{"id":1776124763373,"name":"HIGHILT","stock":0},{"id":1776124864019,"name":"CALIN","stock":40},{"id":1777288348233,"name":"EGOLAS","stock":0},{"id":1777384621994,"name":"GERD","stock":160},{"id":1777384639747,"name":"VELOCE","stock":100}];
+
+  const INITIAL_TRANSACTIONS = [{"id":1772035890435,"vetId":"1772033020866","product":"VLUTLICH","qty":10,"date":"2026-02-25","type":"borclanma"},{"id":1772044674353,"vetId":"1772033021200","product":"ECHO","qty":20,"date":"2026-02-25","type":"borclanma"},{"id":1772044705716,"vetId":"1772033021200","product":"TIMUR","qty":20,"date":"2026-02-25","type":"borclanma"},{"id":1772044751671,"vetId":"1772033021160","product":"BARON","qty":80,"date":"2026-02-25","type":"borclanma"},{"id":1772044785380,"vetId":"1772033021160","product":"ECHO","qty":40,"date":"2026-02-25","type":"borclanma"},{"id":1772044819537,"vetId":"1772033021160","product":"HUXLEY","qty":40,"date":"2026-02-25","type":"borclanma"},{"id":1772044851168,"vetId":"1772033021160","product":"HERON","qty":140,"date":"2026-02-25","type":"borclanma"},{"id":1772044875314,"vetId":"1772033021160","product":"HOŞLAN","qty":20,"date":"2026-02-25","type":"borclanma"},{"id":1772044903292,"vetId":"1772033021160","product":"İLTIS","qty":120,"date":"2026-02-25","type":"borclanma"},{"id":1772044936351,"vetId":"1772033021160","product":"MADOC","qty":80,"date":"2026-02-25","type":"borclanma"},{"id":1772044968909,"vetId":"1772033021160","product":"MALLARCO","qty":80,"date":"2026-02-25","type":"borclanma"},{"id":1772044992226,"vetId":"1772033021160","product":"NIXON","qty":40,"date":"2026-02-25","type":"borclanma"},{"id":1772045025929,"vetId":"1772033021160","product":"PAVAROTTI","qty":40,"date":"2026-02-25","type":"borclanma"},{"id":1772045052662,"vetId":"1772033021160","product":"RANGER","qty":20,"date":"2026-02-25","type":"borclanma"},{"id":1772045080676,"vetId":"1772033021160","product":"WILDPARK","qty":40,"date":"2026-02-25","type":"borclanma"},{"id":1772045114458,"vetId":"1772033021160","product":"MILANO","qty":100,"date":"2026-02-25","type":"borclanma"},{"id":1772045150940,"vetId":"1772033021160","product":"HUXLEY","qty":40,"date":"2026-02-25","type":"borclanma"},{"id":1772045233277,"vetId":"1772042037123","product":"MAGNIFICENT","qty":80,"date":"2026-02-25","type":"borclanma"},{"id":1772045269581,"vetId":"1772042037123","product":"MARADONA","qty":80,"date":"2026-02-25","type":"borclanma"},{"id":1772045312966,"vetId":"1772042037123","product":"ROCCO","qty":80,"date":"2026-02-25","type":"borclanma"},{"id":1772045342717,"vetId":"1772042037123","product":"SERGIO","qty":360,"date":"2026-02-25","type":"borclanma"},{"id":1772045540933,"vetId":"1772042072958","product":"HENDRIX","qty":1060,"date":"2026-02-25","type":"borclanma"},{"id":1772045571730,"vetId":"1772042072958","product":"PIZZARO","qty":40,"date":"2026-02-25","type":"borclanma"},{"id":1772045603211,"vetId":"1772042072958","product":"PRODGY","qty":280,"date":"2026-02-25","type":"borclanma"},{"id":1772045666252,"vetId":"1772042127672","product":"ALM","qty":360,"date":"2026-02-25","type":"borclanma"},{"id":1772045690075,"vetId":"1772042127672","product":"ASTOR","qty":10,"date":"2026-02-25","type":"borclanma"},{"id":1772045724456,"vetId":"1772042127672","product":"BARON","qty":60,"date":"2026-02-25","type":"borclanma"},{"id":1772045765247,"vetId":"1772042127672","product":"LEGENT","qty":20,"date":"2026-02-25","type":"borclanma"},{"id":1772045798724,"vetId":"1772042127672","product":"MANNY","qty":20,"date":"2026-02-25","type":"borclanma"},{"id":1772045824050,"vetId":"1772042127672","product":"ZORRO","qty":120,"date":"2026-02-25","type":"borclanma"},{"id":1772045891850,"vetId":"1772042204971","product":"MAGNIFICENT","qty":80,"date":"2026-02-25","type":"borclanma"},{"id":1772045919472,"vetId":"1772042204971","product":"NIRVANA","qty":80,"date":"2026-02-25","type":"borclanma"},{"id":1772045944910,"vetId":"1772042204971","product":"NIXON","qty":80,"date":"2026-02-25","type":"borclanma"},{"id":1772046001821,"vetId":"1772042234979","product":"RANGER","qty":40,"date":"2026-02-25","type":"borclanma"},{"id":1772046029637,"vetId":"1772042234979","product":"PRODGY","qty":20,"date":"2026-02-25","type":"borclanma"},{"id":1772046072261,"vetId":"1772042276850","product":"HOŞLAN","qty":60,"date":"2026-02-25","type":"borclanma"},{"id":1772046124514,"vetId":"1772042302939","product":"ALM","qty":120,"date":"2026-02-25","type":"borclanma"},{"id":1772046187486,"vetId":"1772042378938","product":"İLTIS","qty":860,"date":"2026-02-25","type":"borclanma"},{"id":1772046220772,"vetId":"1772042378938","product":"NIXON","qty":40,"date":"2026-02-25","type":"borclanma"},{"id":1772046264326,"vetId":"1772042405108","product":"MANDLL","qty":100,"date":"2026-02-25","type":"borclanma"},{"id":1772046301729,"vetId":"1772042405108","product":"VICTOR","qty":160,"date":"2026-02-25","type":"borclanma"},{"id":1772046335262,"vetId":"1772042429100","product":"ALM","qty":80,"date":"2026-02-25","type":"borclanma"},{"id":1772046359492,"vetId":"1772042429100","product":"BARON","qty":140,"date":"2026-02-25","type":"borclanma"},{"id":1772046387397,"vetId":"1772042429100","product":"FABIO","qty":20,"date":"2026-02-25","type":"borclanma"},{"id":1772046410514,"vetId":"1772042429100","product":"ECHO","qty":60,"date":"2026-02-25","type":"borclanma"},{"id":1772046437491,"vetId":"1772042429100","product":"HOŞLAN","qty":40,"date":"2026-02-25","type":"borclanma"},{"id":1772046472828,"vetId":"1772042429100","product":"MADOC","qty":100,"date":"2026-02-25","type":"borclanma"},{"id":1772046498673,"vetId":"1772042429100","product":"MALLARCO","qty":60,"date":"2026-02-25","type":"borclanma"},{"id":1772046534524,"vetId":"1772042429100","product":"TIMUR","qty":250,"date":"2026-02-25","type":"borclanma"},{"id":1772046568524,"vetId":"1772042429100","product":"VICTOR","qty":60,"date":"2026-02-25","type":"borclanma"},{"id":1772046636219,"vetId":"1772042429100","product":"ZOLTAN","qty":60,"date":"2026-02-25","type":"borclanma"},{"id":1772074873824,"vetId":"1772042452171","product":"MILES","qty":100,"date":"2026-02-26","type":"borclanma"},{"id":1772074904592,"vetId":"1772042452171","product":"SOLFEUR","qty":100,"date":"2026-02-26","type":"borclanma"},{"id":1772074932816,"vetId":"1772042452171","product":"WIKIPEDIA","qty":60,"date":"2026-02-26","type":"borclanma"},{"id":1772074957725,"vetId":"1772042452171","product":"ZORRO","qty":40,"date":"2026-02-26","type":"borclanma"},{"id":1772075023118,"vetId":"1772042569328","product":"FABIO","qty":20,"date":"2026-02-26","type":"borclanma"},{"id":1772075065892,"vetId":"1772042569328","product":"NASHVILLE","qty":200,"date":"2026-02-26","type":"borclanma"},{"id":1772075095474,"vetId":"1772042569328","product":"BIG","qty":100,"date":"2026-02-26","type":"borclanma"},{"id":1772075145200,"vetId":"1772042613420","product":"NUT","qty":380,"date":"2026-02-26","type":"borclanma"},{"id":1772075195242,"vetId":"1772042674548","product":"RANGER","qty":20,"date":"2026-02-26","type":"borclanma"},{"id":1772075237254,"vetId":"1772042702486","product":"HENDRIX","qty":300,"date":"2026-02-26","type":"borclanma"},{"id":1772075264538,"vetId":"1772042702486","product":"MADOC","qty":300,"date":"2026-02-26","type":"borclanma"},{"id":1772075289715,"vetId":"1772042702486","product":"MANDLL","qty":80,"date":"2026-02-26","type":"borclanma"},{"id":1772075327727,"vetId":"1772042702486","product":"SAMSUN","qty":80,"date":"2026-02-26","type":"borclanma"},{"id":1772075404066,"vetId":"1772042782038","product":"MARADONA","qty":800,"date":"2026-02-26","type":"borclanma"},{"id":1772075445894,"vetId":"1772042782038","product":"RANGER","qty":160,"date":"2026-02-26","type":"borclanma"},{"id":1772075518106,"vetId":"1772042832769","product":"EXCALIBUR","qty":40,"date":"2026-02-26","type":"borclanma"},{"id":1772075608233,"vetId":"1772042883183","product":"MAGNIFICENT","qty":460,"date":"2026-02-26","type":"borclanma"},{"id":1772075650373,"vetId":"1772042883183","product":"PRODGY","qty":280,"date":"2026-02-26","type":"borclanma"},{"id":1772075715796,"vetId":"1772042911772","product":"EXCALIBUR","qty":20,"date":"2026-02-26","type":"borclanma"},{"id":1772075750470,"vetId":"1772042933546","product":"ECHO","qty":100,"date":"2026-02-26","type":"borclanma"},{"id":1772075774504,"vetId":"1772042933546","product":"HOŞLAN","qty":200,"date":"2026-02-26","type":"borclanma"},{"id":1772075823533,"vetId":"1772042986968","product":"BARON","qty":40,"date":"2026-02-26","type":"borclanma"},{"id":1772075865606,"vetId":"1772043009681","product":"NASHVILLE","qty":20,"date":"2026-02-26","type":"borclanma"},{"id":1772075901142,"vetId":"1772043009681","product":"BIG","qty":340,"date":"2026-02-26","type":"borclanma"},{"id":1772075940171,"vetId":"1772041970079","product":"HOŞLAN","qty":60,"date":"2026-02-26","type":"borclanma"},{"id":1772075968326,"vetId":"1772041970079","product":"İLTIS","qty":100,"date":"2026-02-26","type":"borclanma"},{"id":1772075996460,"vetId":"1772041970079","product":"KOJAKT","qty":80,"date":"2026-02-26","type":"borclanma"},{"id":1772076031408,"vetId":"1772041970079","product":"MANIAC","qty":40,"date":"2026-02-26","type":"borclanma"},{"id":1772076066015,"vetId":"1772041970079","product":"NIXON","qty":20,"date":"2026-02-26","type":"borclanma"},{"id":1772076098422,"vetId":"1772041970079","product":"PELICAN","qty":120,"date":"2026-02-26","type":"borclanma"},{"id":1772076139365,"vetId":"1772041970079","product":"ROCCO","qty":60,"date":"2026-02-26","type":"borclanma"},{"id":1772076171817,"vetId":"1772041970079","product":"RONALDO","qty":20,"date":"2026-02-26","type":"borclanma"},{"id":1772076199421,"vetId":"1772041970079","product":"BIG","qty":100,"date":"2026-02-26","type":"borclanma"},{"id":1772096750299,"vetId":"1772043070882","product":"VILLEROY","qty":40,"date":"2026-02-26","type":"borclanma"},{"id":1772096791432,"vetId":"1772043095956","product":"HENDRIX","qty":80,"date":"2026-02-26","type":"borclanma"},{"id":1772096819888,"vetId":"1772043095956","product":"KOJAKT","qty":40,"date":"2026-02-26","type":"borclanma"},{"id":1772096877968,"vetId":"1772043152730","product":"EGIDIO","qty":60,"date":"2026-02-26","type":"borclanma"},{"id":1772096929648,"vetId":"1772043174568","product":"ORTEGA","qty":60,"date":"2026-02-26","type":"borclanma"},{"id":1772096967836,"vetId":"1772043174568","product":"SAMSUN","qty":60,"date":"2026-02-26","type":"borclanma"},{"id":1772097003734,"vetId":"1772043174568","product":"WIKIPEDIA","qty":60,"date":"2026-02-26","type":"borclanma"},{"id":1772097046249,"vetId":"1772043229859","product":"ASTOR","qty":80,"date":"2026-02-26","type":"borclanma"},{"id":1772097091121,"vetId":"1772043262106","product":"ASTOR","qty":20,"date":"2026-02-26","type":"borclanma"},{"id":1772097132353,"vetId":"1772043262106","product":"ROCCO","qty":20,"date":"2026-02-26","type":"borclanma"},{"id":1772097180396,"vetId":"1772043262106","product":"SERGIO","qty":160,"date":"2026-02-26","type":"borclanma"},{"id":1772097244507,"vetId":"1772043330253","product":"VICTOR","qty":60,"date":"2026-02-26","type":"borclanma"},{"id":1772097281771,"vetId":"1772043352144","product":"EGIDIO","qty":200,"date":"2026-02-26","type":"borclanma"},{"id":1772097322824,"vetId":"1772043352144","product":"SAMSUN","qty":900,"date":"2026-02-26","type":"borclanma"},{"id":1772097349808,"vetId":"1772043352144","product":"VICTOR","qty":100,"date":"2026-02-26","type":"borclanma"},{"id":1772097409127,"vetId":"1772043375675","product":"JORKY","qty":100,"date":"2026-02-26","type":"borclanma"},{"id":1772097456838,"vetId":"1772043400240","product":"İLTIS","qty":60,"date":"2026-02-26","type":"borclanma"},{"id":1772097486276,"vetId":"1772043400240","product":"ZORRO","qty":80,"date":"2026-02-26","type":"borclanma"},{"id":1772097533389,"vetId":"1772043427845","product":"ZORRO","qty":260,"date":"2026-02-26","type":"borclanma"},{"id":1772097558837,"vetId":"1772043427845","product":"BIG","qty":60,"date":"2026-02-26","type":"borclanma"},{"id":1772097591846,"vetId":"1772043464045","product":"BIG","qty":20,"date":"2026-02-26","type":"borclanma"},{"id":1772269770650,"vetId":"1772042378938","product":"İLTIS","qty":-40,"date":"2026-02-28","type":"odeme"},{"id":1772541936785,"vetId":"1772042405108","product":"MANDLL","qty":-20,"date":"2026-03-03","type":"odeme"},{"id":1772541982090,"vetId":"1772042405108","product":"VICTOR","qty":-20,"date":"2026-03-03","type":"odeme"},{"id":1772607751473,"vetId":"1772042072958","product":"HENDRIX","qty":-40,"date":"2026-03-04","type":"odeme"},{"id":1772607810615,"vetId":"1772042072958","product":"PRODGY","qty":-40,"date":"2026-03-04","type":"odeme"},{"id":1772608592392,"vetId":"1772042702486","product":"MANDLL","qty":-40,"date":"2026-03-04","type":"odeme"},{"id":1772611708933,"vetId":"1772042452171","product":"WIKIPEDIA","qty":-20,"date":"2026-03-04","type":"odeme"},{"id":1772611727647,"vetId":"1772042452171","product":"ZORRO","qty":-20,"date":"2026-03-04","type":"odeme"},{"id":1772611749517,"vetId":"1772042452171","product":"SOLFEUR","qty":-20,"date":"2026-03-04","type":"odeme"},{"id":1772788552001,"vetId":"1772042933546","product":"ECHO","qty":-100,"date":"2026-03-06","type":"odeme"},{"id":1772788573213,"vetId":"1772042933546","product":"HOŞLAN","qty":-200,"date":"2026-03-06","type":"odeme"},{"id":1773058459831,"vetId":"1772042127672","product":"ALM","qty":-20,"date":"2026-03-09","type":"odeme"},{"id":1773131247134,"vetId":"1772043262106","product":"ASTOR","qty":-20,"date":"2026-03-10","type":"odeme"},{"id":1773137722880,"vetId":"1772033020866","product":"ASTOR","qty":80,"date":"2026-03-10","type":"borclanma"},{"id":1773148648442,"vetId":"1772042429100","product":"TIMUR","qty":-20,"date":"2026-03-10","type":"odeme"},{"id":1773148688171,"vetId":"1772042429100","product":"BARON","qty":-20,"date":"2026-03-10","type":"odeme"},{"id":1773148723820,"vetId":"1772042429100","product":"MADOC","qty":-20,"date":"2026-03-10","type":"odeme"},{"id":1773161700943,"vetId":"1772033020866","product":"CEINTUR ŞAROLE","qty":80,"date":"2026-03-10","type":"borclanma"},{"id":1773300558786,"vetId":"1772043095956","product":"NASHVILLE","qty":120,"date":"2026-03-12","type":"borclanma"},{"id":1773300590578,"vetId":"1772043095956","product":"NIXON","qty":120,"date":"2026-03-12","type":"borclanma"},{"id":1773306226786,"vetId":"1772043352144","product":"EGIDIO","qty":-120,"date":"2026-03-12","type":"odeme"},{"id":1773307004917,"vetId":"1772043352144","product":"NIXON","qty":100,"date":"2026-03-12","type":"borclanma"},{"id":1773311742037,"vetId":"1772042782038","product":"MARADONA","qty":-120,"date":"2026-03-12","type":"odeme"},{"id":1773311773967,"vetId":"1772042883183","product":"PRODGY","qty":-20,"date":"2026-03-12","type":"odeme"},{"id":1773311798790,"vetId":"1772042883183","product":"MAGNIFICENT","qty":-40,"date":"2026-03-12","type":"odeme"},{"id":1773326379310,"vetId":"1772042782038","product":"NASHVILLE","qty":200,"date":"2026-03-12","type":"borclanma"},{"id":1773326408619,"vetId":"1772042782038","product":"NIXON","qty":200,"date":"2026-03-12","type":"borclanma"},{"id":1773398358549,"vetId":"1772042378938","product":"İLTIS","qty":-60,"date":"2026-03-13","type":"odeme"},{"id":1774706744679,"vetId":"1772042127672","product":"ALM","qty":-40,"date":"2026-03-27","type":"odeme"},{"id":1774706775987,"vetId":"1772042127672","product":"ASTOR","qty":-10,"date":"2026-03-27","type":"odeme"},{"id":1774706848377,"vetId":"1772042072958","product":"HENDRIX","qty":-40,"date":"2026-03-27","type":"odeme"},{"id":1774706871096,"vetId":"1772042702486","product":"HENDRIX","qty":-20,"date":"2026-03-28","type":"odeme"},{"id":1774706967702,"vetId":"1772042037123","product":"MARADONA","qty":-20,"date":"2026-03-27","type":"odeme"},{"id":1774707005145,"vetId":"1772042037123","product":"MAGNIFICENT","qty":-20,"date":"2026-03-27","type":"odeme"},{"id":1774707144534,"vetId":"1772041970079","product":"PELICAN","qty":-20,"date":"2026-03-26","type":"odeme"},{"id":1774707231364,"vetId":"1772042405108","product":"VICTOR","qty":-40,"date":"2026-03-26","type":"odeme"},{"id":1774707271362,"vetId":"1772033021160","product":"WILDPARK","qty":-20,"date":"2026-03-28","type":"odeme"},{"id":1774707314129,"vetId":"1772042127672","product":"ZORRO","qty":-20,"date":"2026-03-27","type":"odeme"},{"id":1774707359732,"vetId":"1772033021160","product":"BARON","qty":-20,"date":"2026-03-24","type":"odeme"},{"id":1774707409033,"vetId":"1772042378938","product":"İLTIS","qty":-40,"date":"2026-03-24","type":"odeme"},{"id":1774707475209,"vetId":"1772042702486","product":"MANDLL","qty":-40,"date":"2026-03-28","type":"odeme"},{"id":1774707763383,"vetId":"1772041970079","product":"ASTOR","qty":20,"date":"2026-03-28","type":"borclanma"},{"id":1774708026428,"vetId":"1772042204971","product":"NIRVANA","qty":-40,"date":"2026-03-17","type":"odeme"},{"id":1774708048915,"vetId":"1772042204971","product":"NIXON","qty":-40,"date":"2026-03-17","type":"odeme"},{"id":1774708121017,"vetId":"1772033021160","product":"RANGER","qty":-20,"date":"2026-03-26","type":"odeme"},{"id":1774708245280,"vetId":"1772042956497","product":"ZORRO","qty":60,"date":"2026-03-28","type":"borclanma"},{"id":1774854169309,"vetId":"1772042429100","product":"ALM","qty":-20,"date":"2026-03-30","type":"odeme"},{"id":1774854191750,"vetId":"1772042429100","product":"HOŞLAN","qty":-20,"date":"2026-03-30","type":"odeme"},{"id":1774854219725,"vetId":"1772042429100","product":"TIMUR","qty":-20,"date":"2026-03-30","type":"odeme"},{"id":1774854252290,"vetId":"1772042429100","product":"ZOLTAN","qty":-20,"date":"2026-03-30","type":"odeme"},{"id":1774858527703,"vetId":"1772043152730","product":"EGIDIO","qty":-60,"date":"2026-03-30","type":"odeme"},{"id":1774870782761,"vetId":"1772043229859","product":"ASTOR","qty":-80,"date":"2026-03-30","type":"odeme"},{"id":1774882667755,"vetId":"1772043400240","product":"İLTIS","qty":-20,"date":"2026-03-30","type":"odeme"},{"id":1774884097382,"vetId":"1772042569328","product":"ZOLTAN","qty":100,"date":"2026-03-30","type":"borclanma"},{"id":1774885698340,"vetId":"1772043009681","product":"BIG","qty":-40,"date":"2026-03-30","type":"odeme"},{"id":1775038420883,"vetId":"1772042883183","product":"PRODGY","qty":-40,"date":"2026-04-01","type":"odeme"},{"id":1775038445364,"vetId":"1772042883183","product":"MAGNIFICENT","qty":-20,"date":"2026-04-01","type":"odeme"},{"id":1775547344464,"vetId":"1772042702486","product":"İLTIS","qty":100,"date":"2026-04-07","type":"borclanma"},{"id":1775547367202,"vetId":"1772042702486","product":"HENDRIX","qty":-40,"date":"2026-04-07","type":"odeme"},{"id":1775547531748,"vetId":"1772042072958","product":"HENDRIX","qty":-40,"date":"2026-04-07","type":"odeme"},{"id":1775549474294,"vetId":"1772043174568","product":"ORTEGA","qty":-20,"date":"2026-04-07","type":"odeme"},{"id":1775578093827,"vetId":"1772043009681","product":"BIG","qty":-40,"date":"2026-04-07","type":"odeme"},{"id":1775674482227,"vetId":"1772043070882","product":"VILLEROY","qty":-40,"date":"2026-04-08","type":"odeme"},{"id":1775723627495,"vetId":"1772042452171","product":"MILANO","qty":80,"date":"2026-04-09","type":"borclanma"},{"id":1775723666659,"vetId":"1772042452171","product":"NIXON","qty":20,"date":"2026-04-09","type":"borclanma"},{"id":1775724067847,"vetId":"1772042452171","product":"ECHO","qty":120,"date":"2026-04-09","type":"borclanma"},{"id":1775724094892,"vetId":"1772042452171","product":"BARON","qty":80,"date":"2026-04-09","type":"borclanma"},{"id":1775724118897,"vetId":"1772042452171","product":"MADOC","qty":60,"date":"2026-04-09","type":"borclanma"},{"id":1775724201083,"vetId":"1772042452171","product":"MAREDO","qty":100,"date":"2026-04-09","type":"borclanma"},{"id":1775724220705,"vetId":"1772042452171","product":"EDEN","qty":100,"date":"2026-04-09","type":"borclanma"},{"id":1775724330279,"vetId":"1772042452171","product":"HEINFLES","qty":100,"date":"2026-04-09","type":"borclanma"},{"id":1775740100004,"vetId":"1775740056654","product":"ZORRO","qty":40,"date":"2026-04-09","type":"borclanma"},{"id":1775808827979,"vetId":"1772042378938","product":"İLTIS","qty":-140,"date":"2026-04-10","type":"odeme"},{"id":1775809633181,"vetId":"1772033021160","product":"ECHO","qty":-20,"date":"2026-04-10","type":"odeme"},{"id":1776069522957,"vetId":"1776069494525","product":"BIG","qty":80,"date":"2026-04-13","type":"borclanma"},{"id":1776075621736,"vetId":"1772042859098","product":"TABLET","qty":340,"date":"2026-04-13","type":"borclanma"},{"id":1776080886749,"vetId":"1772042037123","product":"SERGIO","qty":-100,"date":"2026-04-13","type":"odeme"},{"id":1776082512140,"vetId":"1772043229859","product":"TITUS","qty":60,"date":"2026-04-13","type":"borclanma"},{"id":1776124631508,"vetId":"1772042127672","product":"HEINFLES","qty":200,"date":"2026-04-13","type":"borclanma"},{"id":1776124662919,"vetId":"1772042127672","product":"HUXLEY","qty":40,"date":"2026-04-13","type":"borclanma"},{"id":1776124707831,"vetId":"1772042127672","product":"ROCCO","qty":200,"date":"2026-04-13","type":"borclanma"},{"id":1776124742061,"vetId":"1772042127672","product":"SAMSUN","qty":100,"date":"2026-04-13","type":"borclanma"},{"id":1776124785360,"vetId":"1772042127672","product":"HIGHILT","qty":40,"date":"2026-04-13","type":"borclanma"},{"id":1776124883864,"vetId":"1772042127672","product":"CALIN","qty":40,"date":"2026-04-14","type":"borclanma"},{"id":1776153163039,"vetId":"1772033020866","product":"CEINTUR ŞAROLE","qty":-40,"date":"2026-04-14","type":"odeme"},{"id":1776158905730,"vetId":"1772033020866","product":"İLTIS","qty":60,"date":"2026-04-14","type":"borclanma"},{"id":1776496573161,"vetId":"1772042378938","product":"İLTIS","qty":-20,"date":"2026-04-18","type":"odeme"},{"id":1776499585940,"vetId":"1772042378938","product":"İLTIS","qty":-20,"date":"2026-04-18","type":"odeme"},{"id":1776499602920,"vetId":"1772042378938","product":"NIXON","qty":-20,"date":"2026-04-18","type":"odeme"},{"id":1776500693619,"vetId":"1772033021160","product":"HERON","qty":-20,"date":"2026-04-18","type":"odeme"},{"id":1776500706772,"vetId":"1772033021160","product":"MADOC","qty":-20,"date":"2026-04-18","type":"odeme"},{"id":1776839032758,"vetId":"1772042072958","product":"HENDRIX","qty":-80,"date":"2026-04-22","type":"odeme"},{"id":1776839050673,"vetId":"1772042072958","product":"PRODGY","qty":-40,"date":"2026-04-22","type":"odeme"},{"id":1776840633001,"vetId":"1772042702486","product":"MADOC","qty":-40,"date":"2026-04-22","type":"odeme"},{"id":1776843670430,"vetId":"1772042405108","product":"MANDLL","qty":-40,"date":"2026-04-22","type":"odeme"},{"id":1776843700818,"vetId":"1772042405108","product":"VICTOR","qty":-40,"date":"2026-04-22","type":"odeme"},{"id":1777021912535,"vetId":"1772042378938","product":"İLTIS","qty":-60,"date":"2026-04-24","type":"odeme"},{"id":1777025691337,"vetId":"1772042346106","product":"MADOC","qty":80,"date":"2026-04-24","type":"borclanma"},{"id":1777025710901,"vetId":"1772042346106","product":"MALLARCO","qty":60,"date":"2026-04-24","type":"borclanma"},{"id":1777288373701,"vetId":"1777288327815","product":"EGOLAS","qty":250,"date":"2026-04-27","type":"borclanma"},{"id":1777367478221,"vetId":"1772042429100","product":"ECHO","qty":-20,"date":"2026-04-28","type":"odeme"},{"id":1777371663733,"vetId":"1776069494525","product":"BIG","qty":-40,"date":"2026-04-28","type":"odeme"},{"id":1777376773187,"vetId":"1776069494525","product":"RONALDO","qty":40,"date":"2026-04-28","type":"borclanma"},{"id":1777384368811,"vetId":"1772042037123","product":"MARADONA","qty":-20,"date":"2026-04-28","type":"odeme"},{"id":1777384386595,"vetId":"1772042037123","product":"MAGNIFICENT","qty":-20,"date":"2026-04-28","type":"odeme"},{"id":1777384737120,"vetId":"1772042037123","product":"GERD","qty":160,"date":"2026-04-28","type":"borclanma"},{"id":1777384759660,"vetId":"1772042037123","product":"VELOCE","qty":100,"date":"2026-04-28","type":"borclanma"},{"id":1777384786952,"vetId":"1772042037123","product":"EXCALIBUR","qty":-40,"date":"2026-04-28","type":"odeme"},{"id":1777385674317,"vetId":"1772043427845","product":"BIG","qty":-40,"date":"2026-04-28","type":"odeme"},{"id":1777385705526,"vetId":"1772043427845","product":"ZORRO","qty":-20,"date":"2026-04-28","type":"odeme"},{"id":1777386752785,"vetId":"1772043229859","product":"TITUS","qty":-60,"date":"2026-04-28","type":"odeme"},{"id":1777389879141,"vetId":"1772043262106","product":"SERGIO","qty":-40,"date":"2026-04-28","type":"odeme"},{"id":1777456135438,"vetId":"1772042127672","product":"ROCCO","qty":-20,"date":"2026-04-29","type":"odeme"},{"id":1777456159179,"vetId":"1772042127672","product":"HIGHILT","qty":-40,"date":"2026-04-29","type":"odeme"},{"id":1777456183779,"vetId":"1772042127672","product":"SAMSUN","qty":-40,"date":"2026-04-29","type":"odeme"},{"id":1777456205663,"vetId":"1772042127672","product":"LEGENT","qty":-20,"date":"2026-04-29","type":"odeme"},{"id":1777456226566,"vetId":"1772042127672","product":"MANNY","qty":-20,"date":"2026-04-29","type":"odeme"},{"id":1777456253354,"vetId":"1772042127672","product":"HEINFLES","qty":-40,"date":"2026-04-29","type":"odeme"},{"id":1777536883911,"vetId":"1772041970079","product":"BIG","qty":-20,"date":"2026-04-30","type":"odeme"},{"id":1777536904444,"vetId":"1772041970079","product":"KOJAKT","qty":-20,"date":"2026-04-30","type":"odeme"},{"id":1777536929552,"vetId":"1772041970079","product":"MANIAC","qty":-20,"date":"2026-04-30","type":"odeme"},{"id":1777537029469,"vetId":"1772041970079","product":"RONALDO","qty":-20,"date":"2026-04-30","type":"odeme"},{"id":1777541469772,"vetId":"1772042956497","product":"ZORRO","qty":-40,"date":"2026-04-30","type":"odeme"},{"id":1777641198481,"vetId":"1777288327815","product":"EGOLAS","qty":-250,"date":"2026-05-01","type":"odeme"},{"id":1777709963483,"vetId":"1772043352144","product":"SAMSUN","qty":-160,"date":"2026-05-02","type":"odeme"},{"id":1777719469471,"vetId":"1772042782038","product":"NIXON","qty":-20,"date":"2026-05-02","type":"odeme"},{"id":1777719760741,"vetId":"1772042326803","product":"NASHVILLE","qty":20,"date":"2026-05-02","type":"borclanma"},{"id":1777719882350,"vetId":"1772042883183","product":"PRODGY","qty":-40,"date":"2026-05-02","type":"odeme"},{"id":1777719938167,"vetId":"1772042883183","product":"MAGNIFICENT","qty":-20,"date":"2026-05-02","type":"odeme"},{"id":1777796033264,"vetId":"1772043095956","product":"BIG","qty":-20,"date":"2026-04-26","type":"odeme"},{"id":1777995786367,"vetId":"1772043095956","product":"BIG","qty":100,"date":"2026-05-05","type":"borclanma"},{"id":1778069956079,"vetId":"1772042832769","product":"EXCALIBUR","qty":-40,"date":"2026-05-06","type":"odeme"},{"id":1778073239491,"vetId":"1772042346106","product":"MALLARCO","qty":-40,"date":"2026-05-06","type":"odeme"},{"id":1778073262859,"vetId":"1772042346106","product":"MADOC","qty":-40,"date":"2026-05-06","type":"odeme"},{"id":1778237599896,"vetId":"1772042452171","product":"ECHO","qty":-20,"date":"2026-05-08","type":"odeme"},{"id":1778237635381,"vetId":"1772042452171","product":"MADOC","qty":-20,"date":"2026-05-08","type":"odeme"},{"id":1778237665267,"vetId":"1772042452171","product":"MILANO","qty":-20,"date":"2026-05-08","type":"odeme"},{"id":1778237711108,"vetId":"1772042452171","product":"EDEN","qty":-20,"date":"2026-05-08","type":"odeme"},{"id":1778243214911,"vetId":"1772042302939","product":"ALM","qty":-80,"date":"2026-05-08","type":"odeme"},{"id":1778249923622,"vetId":"1772042452171","product":"RONALDO","qty":80,"date":"2026-05-08","type":"borclanma"},{"id":1778262079987,"vetId":"1778262036889","product":"RONALDO","qty":100,"date":"2026-05-08","type":"borclanma"},{"id":1778338980495,"vetId":"1772043095956","product":"KOJAKT","qty":-20,"date":"2026-05-04","type":"odeme"}];
 
   const App = () => {
     const [activeTab, setActiveTab] = useState('home');
     const [selectedVetId, setSelectedVetId] = useState(null);
     const [selectedProductId, setSelectedProductId] = useState(null);
-    
     const [showAddForm, setShowAddForm] = useState(false);
     const [showQuickAdd, setShowQuickAdd] = useState(null);
     const [vetSearch, setVetSearch] = useState('');
-    
+    const [bullSearch, setBullSearch] = useState(''); 
+    const [historySearch, setHistorySearch] = useState('');
     const [editingVetId, setEditingVetId] = useState(null);
     const [editVetName, setEditVetName] = useState('');
     const [editVetPhone, setEditVetPhone] = useState('');
-    const [editVetLimit, setEditVetLimit] = useState('');
-
     const [editingProductId, setEditingProductId] = useState(null);
     const [editProductName, setEditProductName] = useState('');
-
     const [openVetMenuId, setOpenVetMenuId] = useState(null);
     const [openProductMenuId, setOpenProductMenuId] = useState(null);
     const [openTransMenuId, setOpenTransMenuId] = useState(null);
     const [editingTransId, setEditingTransId] = useState(null);
-
     const [confirmDelete, setConfirmDelete] = useState({ open: false, type: '', id: null, message: '' });
 
     const fileInputRef = useRef(null);
 
     const [vets, setVets] = useState(() => {
-      const stored = JSON.parse(localStorage.getItem('v_vets_v6'));
-      return stored || INITIAL_VETS_LEGACY.map(v => ({ id: uid(), name: normalizeName(v), phone: '', limit: 0 }));
+      const stored = localStorage.getItem('v_vets_v6');
+      return stored !== null ? JSON.parse(stored) : INITIAL_VETS;
     });
 
     const [products, setProducts] = useState(() => {
-      const stored = JSON.parse(localStorage.getItem('v_prods_v6'));
-      return stored || INITIAL_PRODUCTS;
+      const stored = localStorage.getItem('v_prods_v6');
+      return stored !== null ? JSON.parse(stored) : INITIAL_PRODUCTS;
     });
 
     const [transactions, setTransactions] = useState(() => {
-      const stored = JSON.parse(localStorage.getItem('v_trans_v6'));
-      return stored || [];
+      const stored = localStorage.getItem('v_trans_v6');
+      return stored !== null ? JSON.parse(stored) : INITIAL_TRANSACTIONS;
     });
 
     useEffect(() => {
@@ -172,70 +199,85 @@
     }, [vets, products, transactions]);
 
     useEffect(() => {
-      const onDoc = () => { setOpenVetMenuId(null); setOpenProductMenuId(null); setOpenTransMenuId(null); };
-      document.addEventListener('click', onDoc);
+      const onDoc = () => { 
+        setOpenVetMenuId(null); 
+        setOpenProductMenuId(null); 
+        setOpenTransMenuId(null); 
+      };
+      if (openVetMenuId || openProductMenuId || openTransMenuId) {
+        document.addEventListener('click', onDoc);
+      }
       return () => document.removeEventListener('click', onDoc);
-    }, []);
+    }, [openVetMenuId, openProductMenuId, openTransMenuId]);
 
     const [formVetId, setFormVetId] = useState('');
     const [formProduct, setFormProduct] = useState('');
     const [formQty, setFormQty] = useState('');
-    const [formType, setFormType] = useState('borclanma');
+    const [formType, setFormType] = useState('borclanma'); 
     const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
-
     const [newNameInput, setNewNameInput] = useState('');
-    const [newPhoneInput, setNewPhoneInput] = useState('');
-    const [newLimitInput, setNewLimitInput] = useState('');
+
+    const [visibleVets, setVisibleVets] = useState(50);
+    const [visibleBulls, setVisibleBulls] = useState(50);
+    const [visibleHistory, setVisibleHistory] = useState(50);
+    const [visibleDetailHistory, setVisibleDetailHistory] = useState(50);
+
+    useEffect(() => { setVisibleVets(50); }, [vetSearch, activeTab]);
+    useEffect(() => { setVisibleBulls(50); }, [bullSearch, activeTab]);
+    useEffect(() => { setVisibleHistory(50); }, [historySearch, activeTab]);
+    useEffect(() => { setVisibleDetailHistory(50); }, [selectedVetId, selectedProductId]);
 
     const stats = useMemo(() => {
       const map = {};
+      let totalBalance = 0;
       vets.forEach(v => map[v.id] = { balance: 0 });
-      transactions.forEach(t => {
-        if (map[t.vetId]) map[t.vetId].balance += Number(t.qty);
-      });
-      return map;
+      for (let i = 0; i < transactions.length; i++) {
+        const t = transactions[i];
+        if (map[t.vetId]) {
+            const q = Number(t.qty);
+            map[t.vetId].balance += q;
+            totalBalance += q;
+        }
+      }
+      return { map, totalBalance };
     }, [transactions, vets]);
 
-    const selectedVet = useMemo(() => vets.find(v => v.id === selectedVetId) || null, [vets, selectedVetId]);
-    const selectedProduct = useMemo(() => products.find(p => p.id === selectedProductId) || null, [products, selectedProductId]);
+    const sortedVets = useMemo(() => [...vets].sort((a, b) => a.name.localeCompare(b.name, 'tr')), [vets]);
+    const sortedProductsList = useMemo(() => [...products].sort((a, b) => a.name.localeCompare(b.name, 'tr')), [products]);
 
-    // Alfabetik Sıralanmış Müşteriler (Türkçe karakter duyarlı)
-    const sortedVets = useMemo(() => {
-      return [...vets].sort((a, b) => a.name.localeCompare(b.name, 'tr'));
-    }, [vets]);
+    const filteredVetsRaw = useMemo(() => {
+      const s = normalizeName(vetSearch);
+      return s ? sortedVets.filter(v => normalizeName(v.name).includes(s)) : sortedVets;
+    }, [sortedVets, vetSearch]);
+    const filteredVets = filteredVetsRaw.slice(0, visibleVets);
 
-    // Alfabetik Sıralanmış Ürünler
-    const sortedProductsList = useMemo(() => {
-      return [...products].sort((a, b) => a.name.localeCompare(b.name, 'tr'));
-    }, [products]);
+    const filteredBullsRaw = useMemo(() => {
+      const s = normalizeName(bullSearch);
+      return s ? sortedProductsList.filter(p => normalizeName(p.name).includes(s)) : sortedProductsList;
+    }, [sortedProductsList, bullSearch]);
+    const filteredBulls = filteredBullsRaw.slice(0, visibleBulls);
 
-    const getVetStats = (vId) => {
-      const vetTrans = transactions.filter(t => t.vetId == vId);
-      const balance = vetTrans.reduce((acc, t) => acc + Number(t.qty), 0);
-      const productBalances = {};
-      vetTrans.forEach(t => { productBalances[t.product] = (productBalances[t.product] || 0) + Number(t.qty); });
-      const items = Object.keys(productBalances).map(name => ({ name, balance: productBalances[name] })).filter(i => i.balance !== 0);
-      items.sort((a, b) => a.name.localeCompare(b.name, 'tr'));
-      return { balance, history: [...vetTrans].reverse(), productBalances: items };
-    };
+    const filteredHistoryRaw = useMemo(() => {
+        const s = normalizeName(historySearch);
+        const list = [...transactions].reverse();
+        if (!s) return list;
+        return list.filter(t => {
+            const vName = vets.find(v => v.id == t.vetId)?.name || '';
+            return normalizeName(vName).includes(s) || normalizeName(t.product).includes(s);
+        });
+    }, [transactions, historySearch, vets]);
+    const filteredHistory = filteredHistoryRaw.slice(0, visibleHistory);
 
-    const getProductStats = (prodName) => {
-      const prodTrans = transactions.filter(t => t.product === prodName);
-      const vetBalances = {};
-      prodTrans.forEach(t => { vetBalances[t.vetId] = (vetBalances[t.vetId] || 0) + Number(t.qty); });
-      const items = Object.keys(vetBalances).map(vId => ({ 
-        name: vets.find(v => v.id == vId)?.name || 'Bilinmeyen Müşteri', 
-        id: vId,
-        balance: vetBalances[vId] 
-      })).filter(i => i.balance !== 0);
-      items.sort((a, b) => a.name.localeCompare(b.name, 'tr'));
-      return { history: [...prodTrans].reverse(), vetBalances: items };
-    };
+    const resetForm = useCallback(() => {
+      setFormVetId(''); setFormProduct(''); setFormQty('');
+      setFormType('borclanma'); setFormDate(new Date().toISOString().split('T')[0]);
+      setEditingTransId(null);
+    }, []);
 
-    const handleTransaction = () => {
+    const handleTransaction = useCallback(() => {
       if (!formVetId || !formProduct || !formQty) return;
       const qty = parseInt(formQty, 10);
-      const finalQty = formType === 'borclanma' ? qty : -qty;
+      const finalQty = formType === 'borclanma' ? -qty : qty;
       
       if (editingTransId) {
         const oldT = transactions.find(t => t.id === editingTransId);
@@ -250,91 +292,141 @@
       }
       setShowAddForm(false);
       resetForm();
-    };
+    }, [formVetId, formProduct, formQty, formType, formDate, editingTransId, transactions, products, resetForm]);
 
-    const resetForm = () => {
-      setFormVetId(''); setFormProduct(''); setFormQty('');
-      setFormType('borclanma'); setFormDate(new Date().toISOString().split('T')[0]);
-      setEditingTransId(null);
-    };
-
-    const deleteTransaction = (id) => {
+    const deleteTransaction = useCallback((id) => {
       const t = transactions.find(x => x.id === id);
       if (!t) return;
       setProducts(products.map(p => p.name === t.product ? { ...p, stock: p.stock - Number(t.qty) } : p));
       setTransactions(transactions.filter(x => x.id !== id));
       setOpenTransMenuId(null);
-    };
+    }, [transactions, products]);
 
-    const openEditTransaction = (t) => {
+    const openEditTransaction = useCallback((t) => {
       setEditingTransId(t.id);
       setFormVetId(t.vetId);
       setFormProduct(t.product);
       setFormQty(Math.abs(t.qty).toString());
-      setFormType(t.qty > 0 ? 'borclanma' : 'odeme');
+      setFormType(t.type || (t.qty < 0 ? 'borclanma' : 'odeme'));
       setFormDate(t.date);
       setShowAddForm(true);
       setOpenTransMenuId(null);
-    };
+    }, []);
 
-    const handleBack = () => {
-      if (selectedVetId || selectedProductId) {
-        setSelectedVetId(null);
-        setSelectedProductId(null);
-      } else if (activeTab !== 'home') {
-        setActiveTab('home');
-      }
+    const getVetStats = useCallback((vId) => {
+      const vetTrans = transactions.filter(t => t.vetId == vId);
+      const balance = vetTrans.reduce((acc, t) => acc + Number(t.qty), 0);
+      const productBalances = {};
+      vetTrans.forEach(t => { productBalances[t.product] = (productBalances[t.product] || 0) + Number(t.qty); });
+      const items = Object.keys(productBalances).map(name => ({ name, balance: productBalances[name] })).filter(i => i.balance !== 0);
+      items.sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+      return { balance, history: [...vetTrans].reverse(), productBalances: items };
+    }, [transactions]);
+
+    const getProductStats = useCallback((prodName) => {
+      const prodTrans = transactions.filter(t => t.product === prodName);
+      const vetBalances = {};
+      prodTrans.forEach(t => { vetBalances[t.vetId] = (vetBalances[t.vetId] || 0) + Number(t.qty); });
+      const items = Object.keys(vetBalances).map(vId => ({ 
+        name: vets.find(v => v.id == vId)?.name || 'Bilinmeyen Veteriner', 
+        id: vId,
+        balance: vetBalances[vId] 
+      })).filter(i => i.balance !== 0);
+      items.sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+      return { history: [...prodTrans].reverse(), vetBalances: items };
+    }, [transactions, vets]);
+
+    const selectedVetData = useMemo(() => vets.find(v => v.id === selectedVetId), [vets, selectedVetId]);
+    const selectedProductData = useMemo(() => products.find(p => p.id === selectedProductId), [products, selectedProductId]);
+
+    const currentVetStats = useMemo(() => {
+      if (!selectedVetId) return null;
+      return getVetStats(selectedVetId);
+    }, [selectedVetId, getVetStats]);
+
+    const currentProductStats = useMemo(() => {
+      if (!selectedProductData) return null;
+      return getProductStats(selectedProductData.name);
+    }, [selectedProductData, getProductStats]);
+
+    const handleShareVet = useCallback(() => {
+      if (!selectedVetData || !currentVetStats) return;
+      let msg = `*${selectedVetData.name}*\n\n*Boğa* | *Durum*\n-----------\n`;
+      currentVetStats.productBalances.forEach(item => {
+        msg += `${item.name.padEnd(10)} ${item.balance > 0 ? '+' : ''}${item.balance}\n`;
+      });
+      msg += `\n*Toplam Bakiye:* ${currentVetStats.balance > 0 ? '+' : ''}${currentVetStats.balance}`;
+      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+    }, [selectedVetData, currentVetStats]);
+
+    const handleShareBullsStatus = useCallback(() => {
+      let msg = `*BOĞALAR SON DURUM*\n\n*Boğa* | *Durum*\n-----------\n`;
+      sortedProductsList.forEach(bull => {
+        msg += `${bull.name.padEnd(10)} ${bull.stock > 0 ? '+' : ''}${bull.stock}\n`;
+      });
+      msg += `\n_Tarih: ${new Date().toLocaleDateString('tr-TR')}_`;
+      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+    }, [sortedProductsList]);
+
+    const handleBack = useCallback(() => {
+      if (selectedVetId || selectedProductId) { setSelectedVetId(null); setSelectedProductId(null); }
+      else if (activeTab !== 'home') { setActiveTab('home'); }
+    }, [selectedVetId, selectedProductId, activeTab]);
+
+    const handleMenuClick = (e) => {
+      e.stopPropagation();
+      if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
     };
 
     return (
       <div className="app-shell">
-        <header className="bg-white px-4 flex items-center justify-between border-b border-slate-100 z-50">
-          <div className="flex items-center gap-2 overflow-hidden text-left">
+        <header className="bg-white px-5 flex items-center justify-between border-b border-slate-100 z-50">
+          <div className="flex items-center gap-3 overflow-hidden text-left">
             {(selectedVetId || selectedProductId || activeTab !== 'home') && (
-              <button onClick={handleBack} className="p-1.5 active:bg-slate-50 rounded-full">
-                <Icon name="chevron-left" size={22} className="text-slate-600" />
+              <button onClick={handleBack} className="p-2 active:bg-slate-100 rounded-full">
+                <Icon name="chevron-left" size={24} className="text-slate-700" />
               </button>
             )}
-            <h1 className="text-base font-bold text-slate-900 truncate">
-              {selectedVet ? selectedVet.name : (selectedProduct ? selectedProduct.name : (activeTab === 'settings' ? 'Ayarlar' : activeTab === 'vets' ? 'Müşteriler' : activeTab === 'stock' ? 'Ürünler' : activeTab === 'history' ? 'Geçmiş' : 'Borç Defteri'))}
+            <h1 className="text-lg font-extrabold text-slate-900 truncate tracking-tight">
+              {selectedVetData ? selectedVetData.name : (selectedProductData ? selectedProductData.name : (activeTab === 'settings' ? 'Ayarlar' : activeTab === 'vets' ? 'Veterinerler' : activeTab === 'stock' ? 'Boğalar' : activeTab === 'history' ? 'Geçmiş' : 'Borç Defteri'))}
             </h1>
           </div>
-          <button onClick={() => { setActiveTab('settings'); setSelectedVetId(null); setSelectedProductId(null); }} className={`p-2 ${activeTab === 'settings' ? 'text-indigo-600' : 'text-slate-400'}`}>
-            <Icon name="settings" size={18} />
-          </button>
+          <div className="flex items-center gap-1">
+             {selectedVetId && <button onClick={handleShareVet} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl active-tap"><Icon name="share-2" size={20} /></button>}
+             {activeTab === 'stock' && !selectedProductId && products.length > 0 && <button onClick={handleShareBullsStatus} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl active-tap"><Icon name="share-2" size={20} /></button>}
+             <button onClick={() => { setActiveTab('settings'); setSelectedVetId(null); setSelectedProductId(null); }} className={`p-2 rounded-xl ${activeTab === 'settings' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400'}`}>
+               <Icon name="settings" size={22} />
+             </button>
+          </div>
         </header>
 
-        <main className="scroll-area no-scrollbar p-4 bg-white">
+        <main className="scroll-area no-scrollbar p-5 bg-white">
           {/* AYARLAR */}
           {activeTab === 'settings' && !selectedVetId && !selectedProductId && (
-            <div className="space-y-4 animate-in text-left">
-              <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 space-y-4 shadow-sm">
-                <h3 className="font-bold text-slate-800 text-sm">Veri Yönetimi</h3>
-                <div className="space-y-2">
+            <div className="space-y-4 animate-in">
+              <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-4">
+                <h3 className="font-bold text-slate-800 text-sm">Cihaz Verileri</h3>
+                <div className="grid grid-cols-1 gap-3">
                   <button onClick={() => {
-                      const data = { vets, products, transactions };
-                      const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+                      const blob = new Blob([JSON.stringify({ vets, products, transactions })], { type: 'application/json' });
                       const link = document.createElement('a');
                       link.href = URL.createObjectURL(blob);
-                      link.download = `borc_defteri_yedek.json`; link.click();
-                    }} className="w-full flex items-center justify-between p-4 bg-white rounded-xl border border-slate-200 font-bold text-indigo-600 text-xs">
-                    <div className="flex items-center gap-3"><Icon name="download" size={18} /> Verileri Yedekle</div>
-                    <Icon name="chevron-right" size={14} />
+                      link.download = `yedek_${Date.now()}.json`; link.click();
+                    }} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-200 font-bold text-indigo-600 active-tap shadow-sm">
+                    <div className="flex items-center gap-3"><Icon name="download-cloud" size={20} /> Yedek Oluştur</div>
+                    <Icon name="chevron-right" size={16} />
                   </button>
-                  <button onClick={() => fileInputRef.current.click()} className="w-full flex items-center justify-between p-4 bg-white rounded-xl border border-slate-200 font-bold text-emerald-600 text-xs">
-                    <div className="flex items-center gap-3"><Icon name="upload" size={18} /> Yedekten Geri Yükle</div>
-                    <Icon name="chevron-right" size={14} />
+                  <button onClick={() => fileInputRef.current.click()} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-200 font-bold text-emerald-600 active-tap shadow-sm">
+                    <div className="flex items-center gap-3"><Icon name="refresh-ccw" size={20} /> Yedekten Yükle</div>
+                    <Icon name="chevron-right" size={16} />
                   </button>
                   <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={(e) => {
                     const reader = new FileReader();
                     reader.onload = (ev) => {
                       try {
                         const c = JSON.parse(ev.target.result);
-                        if (c.vets && c.products) { 
-                          setVets(c.vets); setProducts(c.products); setTransactions(c.transactions || []); 
-                          setConfirmDelete({ open: true, type: 'alert', message: "Veriler yüklendi!", onConfirm: null });
-                        }
-                      } catch(err) { alert("Dosya hatalı!"); }
+                        if (c.vets) { setVets(c.vets); setProducts(c.products); setTransactions(c.transactions || []); setConfirmDelete({ open: true, type: 'alert', message: "Veriler yüklendi!" }); }
+                      } catch(err) { alert("Hatalı dosya!"); }
                     };
                     if(e.target.files[0]) reader.readAsText(e.target.files[0]);
                   }} />
@@ -343,368 +435,411 @@
             </div>
           )}
 
-          {/* MÜŞTERİ DETAY */}
-          {selectedVet && (
-            <div className="space-y-5 animate-in">
-              <div className="p-6 bg-indigo-600 rounded-3xl text-center text-white shadow-lg relative">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="text-left overflow-hidden">
-                    <h2 className="text-xl font-extrabold truncate uppercase">{selectedVet.name}</h2>
-                    {(selectedVet.phone || (selectedVet.limit > 0)) && (
-                      <p className="text-[11px] font-medium opacity-80 truncate">
-                        {selectedVet.phone && `${selectedVet.phone}`}
-                        {selectedVet.phone && selectedVet.limit > 0 && " • "}
-                        {selectedVet.limit > 0 && `Limit: ${selectedVet.limit}`}
-                      </p>
-                    )}
+          {/* VETERİNER DETAY */}
+          {selectedVetId && currentVetStats && (
+            <div className="space-y-6 animate-in">
+              <div className="p-7 bg-indigo-600 rounded-[2.5rem] text-center text-white shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-10"><Icon name="user" size={100} /></div>
+                <div className="flex items-center justify-between mb-6 relative z-10 text-left">
+                  <div className="overflow-hidden">
+                    <h2 className="text-2xl font-black truncate uppercase leading-tight">{selectedVetData?.name}</h2>
+                    {selectedVetData?.phone && <p className="text-xs font-medium opacity-80 mt-1">{selectedVetData.phone}</p>}
                   </div>
-                  <button onClick={() => { setEditingVetId(selectedVet.id); setEditVetName(selectedVet.name); setEditVetPhone(selectedVet.phone); setEditVetLimit(selectedVet.limit); }} className="p-2.5 bg-white/20 rounded-xl shrink-0">
-                    <Icon name="edit-3" size={18} className="text-white" />
+                  <button onClick={() => { setEditingVetId(selectedVetId); setEditVetName(selectedVetData.name); setEditVetPhone(selectedVetData.phone); }} className="p-3 bg-white/20 rounded-2xl active-tap shrink-0">
+                    <Icon name="pencil" size={20} className="text-white" />
                   </button>
                 </div>
-                <div className="py-2">
-                  <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest">NET BAKİYE</p>
-                  <p className="text-5xl font-black mt-1">{stats[selectedVet.id]?.balance > 0 ? `+${stats[selectedVet.id].balance}` : (stats[selectedVet.id]?.balance || 0)}</p>
+                <div className="py-2 relative z-10">
+                  <p className="text-[11px] font-bold opacity-60 uppercase tracking-[0.2em]">CARİ BAKİYE</p>
+                  <p className="text-6xl font-black mt-2 tracking-tighter">
+                    {stats.map[selectedVetId]?.balance > 0 ? `+${stats.map[selectedVetId].balance}` : (stats.map[selectedVetId]?.balance || 0)}
+                  </p>
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 text-left">Ürün Dağılımı</h3>
-                {getVetStats(selectedVet.id).productBalances.length === 0 ? (
-                    <p className="p-4 bg-slate-50 rounded-xl text-slate-400 text-xs text-center font-bold italic">Müşteriye ait aktif ürün borcu bulunmuyor.</p>
-                ) : getVetStats(selectedVet.id).productBalances.map(item => (
-                  <div key={item.name} className="flex justify-between p-4 bg-slate-50 border border-slate-100 rounded-2xl shadow-sm">
-                    <span className="font-bold text-slate-700 text-sm uppercase">{item.name}</span>
-                    <span className={`font-black text-sm ${item.balance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{item.balance > 0 ? `+${item.balance}` : item.balance}</span>
+              <div className="space-y-3">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest px-2 text-left">Boğa Bazlı Borç</h3>
+                {currentVetStats.productBalances.length === 0 ? (
+                    <div className="p-10 bg-slate-50 rounded-3xl border border-dashed border-slate-200 text-center"><p className="text-xs font-bold text-slate-400">Aktif borç yok.</p></div>
+                ) : currentVetStats.productBalances.map(item => (
+                  <div key={item.name} className="flex justify-between items-center p-5 bg-slate-50 border border-slate-100 rounded-2xl shadow-sm animate-in">
+                    <span className="font-extrabold text-slate-800 text-sm uppercase">{item.name}</span>
+                    <span className={`font-black text-base ${item.balance < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{item.balance > 0 ? `+${item.balance}` : item.balance}</span>
                   </div>
                 ))}
               </div>
-
-              <div className="space-y-2">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 text-left">Geçmiş</h3>
-                {getVetStats(selectedVet.id).history.map(t => (
-                  <div key={t.id} className="bg-white p-3 rounded-xl border border-slate-100 flex items-center justify-between shadow-sm">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-1.5 rounded-lg shrink-0 ${t.qty > 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                        <Icon name={t.qty > 0 ? "arrow-up-right" : "arrow-down-left"} size={16} />
+              <div className="space-y-3">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest px-2 text-left">Hareket Geçmişi</h3>
+                {currentVetStats.history.slice(0, visibleDetailHistory).map(t => (
+                  <div key={t.id} className="bg-white p-4 rounded-2xl border border-slate-100 flex items-center justify-between shadow-sm animate-in">
+                    <div className="flex items-center gap-4 text-left">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${t.qty < 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                        <Icon name={t.qty < 0 ? "minus" : "plus"} size={18} />
                       </div>
-                      <div className="text-left truncate">
-                        <p className="text-xs font-bold text-slate-800 truncate uppercase">{t.product}</p>
+                      <div className="truncate">
+                        <p className="text-sm font-bold text-slate-800 uppercase leading-none mb-1 truncate">{t.product}</p>
                         <p className="text-[10px] text-slate-400 font-bold">{t.date}</p>
                       </div>
                     </div>
-                    <span className={`font-black text-sm shrink-0 ml-2 ${t.qty > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{t.qty > 0 ? `+${t.qty}` : t.qty}</span>
+                    <span className={`font-black text-base ${t.qty < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{t.qty > 0 ? `+${t.qty}` : t.qty}</span>
                   </div>
                 ))}
+                {currentVetStats.history.length > visibleDetailHistory && (
+                  <button onClick={() => setVisibleDetailHistory(v => v + 50)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-500 text-sm active-tap mt-2">
+                     Daha Fazla Göster ({currentVetStats.history.length - visibleDetailHistory} kayıt kaldı)
+                  </button>
+                )}
               </div>
             </div>
           )}
 
-          {/* ÜRÜN DETAY */}
-          {selectedProduct && (
-            <div className="space-y-5 animate-in text-left">
-              <div className="p-6 bg-slate-900 rounded-3xl text-center text-white shadow-lg relative">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="text-left">
-                    <h2 className="text-xl font-extrabold uppercase">{selectedProduct.name}</h2>
-                    <p className="text-[11px] font-medium opacity-80 uppercase tracking-tighter">Dışarıdaki Toplam Ürün</p>
+          {/* BOĞA DETAY */}
+          {selectedProductId && currentProductStats && (
+            <div className="space-y-6 animate-in">
+              <div className="p-7 bg-slate-900 rounded-[2.5rem] text-center text-white shadow-xl relative overflow-hidden">
+                <div className="flex items-center justify-between mb-6 relative z-10 text-left">
+                  <div className="overflow-hidden">
+                    <h2 className="text-2xl font-black uppercase tracking-tight leading-tight">{selectedProductData?.name}</h2>
+                    <p className="text-[11px] font-bold opacity-50 uppercase tracking-wider mt-1">Dışarıdaki Toplam</p>
                   </div>
-                  <button onClick={() => { setEditingProductId(selectedProduct.id); setEditProductName(selectedProduct.name); }} className="p-2.5 bg-white/20 rounded-xl">
-                    <Icon name="edit-3" size={18} className="text-white" />
+                  <button onClick={() => { setEditingProductId(selectedProductId); setEditProductName(selectedProductData.name); }} className="p-3 bg-white/10 rounded-2xl active-tap shrink-0">
+                    <Icon name="pencil" size={20} className="text-white" />
                   </button>
                 </div>
-                <div className="py-2 text-center">
-                  <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest text-indigo-400">TOPLAM BORÇTAKİ</p>
-                  <p className="text-5xl font-black mt-1 text-white">{selectedProduct.stock}</p>
-                </div>
+                <div className="py-2 text-center relative z-10"><p className="text-6xl font-black mt-2 text-white tracking-tighter">{selectedProductData?.stock}</p></div>
               </div>
-              
-              <div className="space-y-2">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Müşteri Dağılımı</h3>
-                {getProductStats(selectedProduct.name).vetBalances.length === 0 ? (
-                   <p className="p-4 bg-slate-50 rounded-xl text-slate-400 text-xs text-center font-bold italic">Borç kaydı bulunamadı.</p>
-                ) : getProductStats(selectedProduct.name).vetBalances.map(item => (
-                  <div key={item.id} onClick={() => { setSelectedProductId(null); setSelectedVetId(item.id); }} className="flex justify-between p-4 bg-slate-50 border border-slate-100 rounded-2xl active:bg-slate-100 shadow-sm">
-                    <span className="font-bold text-slate-700 text-sm truncate uppercase">{item.name}</span>
-                    <span className={`font-black text-sm ${item.balance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{item.balance > 0 ? `+${item.balance}` : item.balance}</span>
+              <div className="space-y-3">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest px-2 text-left">Veteriner Dağılımı</h3>
+                {currentProductStats.vetBalances.length === 0 ? (
+                   <p className="p-10 bg-slate-50 rounded-3xl text-slate-400 text-xs text-center font-bold border border-dashed">Kayıt yok.</p>
+                ) : currentProductStats.vetBalances.map(item => (
+                  <div key={item.id} onClick={() => { setSelectedProductId(null); setSelectedVetId(item.id); setActiveTab('vets'); }} className="flex justify-between items-center p-5 bg-slate-50 border border-slate-100 rounded-2xl active-tap shadow-sm animate-in">
+                    <span className="font-extrabold text-slate-800 text-sm truncate uppercase text-left">{item.name}</span>
+                    <span className={`font-black text-base ${item.balance < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{item.balance > 0 ? `+${item.balance}` : item.balance}</span>
                   </div>
                 ))}
               </div>
-
-              <div className="space-y-2">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Ürün Hareketleri</h3>
-                {getProductStats(selectedProduct.name).history.map(t => (
-                  <div key={t.id} className="bg-white p-3 rounded-xl border border-slate-100 flex items-center justify-between shadow-sm">
-                    <div className="flex items-center gap-3 overflow-hidden">
-                      <div className={`p-1.5 rounded-lg shrink-0 ${t.qty > 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                        <Icon name={t.qty > 0 ? "arrow-up-right" : "arrow-down-left"} size={16} />
+              <div className="space-y-3">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest px-2 text-left">Hareket Geçmişi</h3>
+                {currentProductStats.history.slice(0, visibleDetailHistory).map(t => (
+                  <div key={t.id} className="bg-white p-4 rounded-2xl border border-slate-100 flex items-center justify-between shadow-sm animate-in">
+                    <div className="flex items-center gap-4 text-left">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${t.qty < 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                        <Icon name={t.qty < 0 ? "minus" : "plus"} size={18} />
                       </div>
-                      <div className="text-left truncate">
-                        <p className="text-xs font-bold text-slate-800 truncate uppercase">{vets.find(v => v.id == t.vetId)?.name || 'Bilinmeyen'}</p>
+                      <div className="truncate">
+                        <p className="text-sm font-bold text-slate-800 uppercase leading-none mb-1 truncate">{vets.find(v => v.id == t.vetId)?.name || 'Bilinmeyen'}</p>
                         <p className="text-[10px] text-slate-400 font-bold">{t.date}</p>
                       </div>
                     </div>
-                    <span className={`font-black text-sm shrink-0 ml-2 ${t.qty > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{t.qty > 0 ? `+${t.qty}` : t.qty}</span>
+                    <span className={`font-black text-base ${t.qty < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{t.qty > 0 ? `+${t.qty}` : t.qty}</span>
                   </div>
                 ))}
+                {currentProductStats.history.length > visibleDetailHistory && (
+                  <button onClick={() => setVisibleDetailHistory(v => v + 50)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-500 text-sm active-tap mt-2">
+                     Daha Fazla Göster ({currentProductStats.history.length - visibleDetailHistory} kayıt kaldı)
+                  </button>
+                )}
               </div>
             </div>
           )}
 
           {/* ANA SAYFA */}
           {activeTab === 'home' && !selectedVetId && !selectedProductId && (
-            <div className="space-y-4 animate-in">
-              <div className="grid grid-cols-2 gap-3 text-left">
-                <div onClick={() => setActiveTab('stock')} className="p-4 bg-slate-900 rounded-2xl text-white shadow-sm active:scale-95 transition">
-                  <Icon name="package" className="opacity-40 mb-1" size={18} />
-                  <p className="text-[10px] font-bold opacity-60 uppercase tracking-wider">ÜRÜN</p>
-                  <p className="text-xl font-black">{products.reduce((a, b) => a + Number(b.stock), 0)}</p>
+            <div className="space-y-5 animate-in">
+              <div className="flex items-center justify-between p-5 bg-indigo-600 rounded-3xl text-white shadow-lg overflow-hidden relative">
+                <div className="relative z-10 text-left">
+                  <p className="text-[10px] font-black opacity-60 uppercase tracking-widest">TOPLAM ALACAK</p>
+                  <p className="text-3xl font-black mt-0.5 tracking-tight">{stats.totalBalance > 0 ? `+${stats.totalBalance}` : stats.totalBalance}</p>
                 </div>
-                <div onClick={() => setActiveTab('vets')} className="p-4 bg-indigo-600 rounded-2xl text-white shadow-sm active:scale-95 transition text-center">
-                  <Icon name="users" className="opacity-40 mb-1" size={18} />
-                  <p className="text-[10px] font-bold opacity-60 uppercase tracking-wider">MÜŞTERİ</p>
+                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center relative z-10"><Icon name="trending-up" className="text-white" size={24} /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div onClick={() => setActiveTab('stock')} className="p-5 bg-slate-900 rounded-3xl text-white shadow-lg active-tap overflow-hidden relative text-left">
+                  <div className="absolute -bottom-2 -right-2 opacity-10"><Icon name="package" size={50} /></div>
+                  <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest mb-1">BOĞALAR</p>
+                  <p className="text-xl font-black">{products.length}</p>
+                </div>
+                <div onClick={() => setActiveTab('vets')} className="p-5 bg-white border border-slate-100 rounded-3xl text-slate-800 shadow-sm active-tap overflow-hidden relative text-left">
+                  <div className="absolute -bottom-2 -right-2 opacity-5 text-indigo-600"><Icon name="users" size={50} /></div>
+                  <p className="text-[10px] font-bold opacity-40 uppercase tracking-widest mb-1 text-slate-500">VETERİNERLER</p>
                   <p className="text-xl font-black">{vets.length}</p>
                 </div>
               </div>
-              <button onClick={() => { resetForm(); setShowAddForm(true); }} className="w-full bg-indigo-600 text-white p-5 rounded-2xl flex items-center justify-center gap-2 font-bold shadow-lg active:scale-[0.98] transition uppercase tracking-tight">
-                <Icon name="plus-circle" size={20} /> Yeni İşlem Gir
-              </button>
+              <button onClick={() => { resetForm(); setShowAddForm(true); }} className="w-full bg-indigo-600 text-white p-5 rounded-3xl flex items-center justify-center gap-3 font-black shadow-xl shadow-indigo-100 active:scale-[0.98] transition-all uppercase tracking-wider text-sm btn-touch"><Icon name="plus-circle" size={22} /> Yeni İşlem Gir</button>
             </div>
           )}
 
-          {/* ÜRÜNLER LİSTESİ */}
+          {/* BOĞALAR LİSTESİ */}
           {activeTab === 'stock' && !selectedProductId && (
-            <div className="space-y-2 animate-in text-left">
-              <button onClick={() => setShowQuickAdd('product')} className="w-full p-3 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 font-bold text-xs mb-2 active:bg-slate-50">+ Yeni Ürün Ekle</button>
-              {sortedProductsList.map(p => (
-                <div key={p.id} onClick={() => setSelectedProductId(p.id)} className="p-4 bg-slate-50 rounded-xl flex items-center justify-between border border-slate-100 active:bg-slate-100 relative shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-slate-800 text-white flex items-center justify-center font-bold text-[10px] uppercase tracking-tighter">{p.name[0]}</div>
-                    <p className="font-bold text-slate-700 text-sm uppercase">{p.name}</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <p className="font-black text-indigo-600">{p.stock}</p>
-                    <button onClick={(e) => { e.stopPropagation(); setOpenProductMenuId(openProductMenuId === p.id ? null : p.id); }} className="p-1">
-                      <Icon name="more-vertical" size={16} className="text-slate-400" />
-                    </button>
-                  </div>
-                  {openProductMenuId === p.id && (
-                    <div className="absolute right-8 top-10 w-36 bg-white border border-slate-100 rounded-xl shadow-xl z-50 overflow-hidden animate-in" onClick={e => e.stopPropagation()}>
-                      <button onClick={() => { setEditingProductId(p.id); setEditProductName(p.name); }} className="w-full p-3 text-left text-[11px] font-bold border-b flex items-center gap-2 active:bg-slate-50"><Icon name="edit" size={14}/> Düzenle</button>
-                      <button onClick={() => {
-                        if (p.stock !== 0) { setConfirmDelete({ open:true, type:'alert', message:'Dışarıda bakiyesi olan ürün silinemez.' }); return; }
-                        setConfirmDelete({ open: true, type: 'product', id: p.id, message: `${p.name} ürününü silmek istediğinize emin misiniz?`, onConfirm: () => setProducts(products.filter(x => x.id !== p.id)) });
-                      }} className="w-full p-3 text-left text-[11px] font-bold text-rose-500 flex items-center gap-2 active:bg-rose-50"><Icon name="trash" size={14}/> Sil</button>
+            <div className="space-y-3 animate-in">
+              <div className="flex gap-2 mb-2">
+                <input value={bullSearch} onChange={e => setBullSearch(e.target.value)} placeholder="Boğa ara..." className="flex-1 p-4 bg-slate-100 rounded-2xl font-bold text-sm outline-none border-2 border-transparent focus:border-indigo-100 transition-all shadow-inner" />
+                <button onClick={() => setShowQuickAdd('product')} className="w-14 bg-slate-900 text-white rounded-2xl active:scale-90 transition-transform shrink-0 shadow-lg flex items-center justify-center"><Icon name="plus" size={22} /></button>
+              </div>
+              {products.length === 0 ? (<div className="text-center p-16 text-slate-300"><Icon name="package-search" size={48} className="mx-auto opacity-20" /><p className="text-xs font-bold uppercase tracking-widest">Boğa yok</p></div>) : 
+                filteredBulls.map(p => (
+                  <ListItem key={p.id} onClick={() => setSelectedProductId(p.id)} noScale={openProductMenuId === p.id}>
+                    <div className="flex items-center gap-4 text-left">
+                      <div className="w-10 h-10 rounded-xl bg-slate-800 text-white flex items-center justify-center font-bold text-xs uppercase shadow-sm">{p.name[0]}</div>
+                      <p className="font-extrabold text-slate-700 text-sm uppercase truncate">{p.name}</p>
                     </div>
-                  )}
-                </div>
-              ))}
+                    <div className="flex items-center gap-3">
+                      <p className="font-black text-lg text-indigo-600">{p.stock}</p>
+                      <button onClick={(e) => { e.stopPropagation(); setOpenProductMenuId(p.id); }} className="p-2 active:bg-slate-200 rounded-full"><Icon name="more-vertical" size={20} className="text-slate-400" /></button>
+                    </div>
+                    {openProductMenuId === p.id && (
+                      <div className="absolute right-12 top-12 w-40 bg-white border border-slate-100 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in" onClick={handleMenuClick}>
+                        <button onClick={() => { setEditingProductId(p.id); setEditProductName(p.name); }} className="w-full p-4 text-left text-xs font-bold border-b flex items-center gap-3 active:bg-slate-50 transition-colors"><Icon name="pencil" size={16}/> Düzenle</button>
+                        <button onClick={() => {
+                          if (p.stock !== 0) { setConfirmDelete({ open:true, type:'alert', message:'Miktarı 0 olmayan silinemez.' }); return; }
+                          setConfirmDelete({ open: true, type: 'product', id: p.id, message: `${p.name} silinecek?`, onConfirm: () => setProducts(products.filter(x => x.id !== p.id)) });
+                        }} className="w-full p-4 text-left text-xs font-bold text-rose-500 flex items-center gap-3 active:bg-rose-50 transition-colors"><Icon name="trash-2" size={16}/> Sil</button>
+                      </div>
+                    )}
+                  </ListItem>
+                ))
+              }
+              {filteredBullsRaw.length > visibleBulls && (
+                <button onClick={() => setVisibleBulls(v => v + 50)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-500 text-sm active-tap mt-2">
+                   Daha Fazla Göster
+                </button>
+              )}
             </div>
           )}
 
-          {/* MÜŞTERİ LİSTESİ */}
+          {/* VETERİNER LİSTESİ */}
           {activeTab === 'vets' && !selectedVetId && (
-            <div className="space-y-2 animate-in text-left">
-              <div className="flex gap-2 mb-3">
-                <input value={vetSearch} onChange={e => setVetSearch(e.target.value)} placeholder="Müşteri ara..." className="flex-1 p-3 bg-slate-100 rounded-xl font-bold text-sm outline-none" />
-                <button onClick={() => setShowQuickAdd('vet')} className="px-4 bg-slate-900 text-white rounded-xl active:scale-90 transition shrink-0"><Icon name="user-plus" size={18} /></button>
+            <div className="space-y-3 animate-in">
+              <div className="flex gap-2 mb-4">
+                <input value={vetSearch} onChange={e => setVetSearch(e.target.value)} placeholder="Veteriner ara..." className="flex-1 p-4 bg-slate-100 rounded-2xl font-bold text-sm outline-none border-2 border-transparent focus:border-indigo-100 transition-all shadow-inner" />
+                <button onClick={() => setShowQuickAdd('vet')} className="w-14 bg-slate-900 text-white rounded-2xl active:scale-90 transition-transform shrink-0 shadow-lg flex items-center justify-center"><Icon name="user-plus" size={22} /></button>
               </div>
-              {sortedVets.filter(v => normalizeName(v.name).includes(normalizeName(vetSearch))).map(v => (
-                <div key={v.id} onClick={() => setSelectedVetId(v.id)} className="p-4 bg-slate-50 rounded-xl flex items-center justify-between border border-slate-100 active:bg-slate-100 relative shadow-sm">
-                  <div className="flex items-center gap-3 truncate">
-                    <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs uppercase shrink-0">{v.name[0]}</div>
-                    <div className="truncate">
-                        <p className="font-bold text-slate-700 text-sm truncate uppercase">{v.name}</p>
-                        {v.phone && <p className="text-[10px] font-bold text-slate-400 truncate">{v.phone}</p>}
+              {vets.length === 0 ? (<div className="text-center p-16 text-slate-300"><Icon name="user-x" size={48} className="mx-auto opacity-20" /><p className="text-xs font-bold uppercase tracking-widest">Veteriner yok</p></div>) : 
+                filteredVets.map(v => (
+                  <ListItem key={v.id} onClick={() => setSelectedVetId(v.id)} noScale={openVetMenuId === v.id}>
+                    <div className="flex items-center gap-4 truncate text-left">
+                      <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-black text-sm uppercase shrink-0 shadow-sm">{v.name[0]}</div>
+                      <div className="truncate">
+                          <p className="font-extrabold text-slate-800 text-sm truncate uppercase leading-tight">{v.name}</p>
+                          {v.phone && <p className="text-[10px] font-bold text-slate-400 truncate mt-0.5">{v.phone}</p>}
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0 ml-1">
-                    <p className={`font-black ${stats[v.id]?.balance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                      {stats[v.id]?.balance > 0 ? `+${stats[v.id].balance}` : stats[v.id]?.balance}
-                    </p>
-                    <button onClick={(e) => { e.stopPropagation(); setOpenVetMenuId(openVetMenuId === v.id ? null : v.id); }} className="p-1">
-                      <Icon name="more-vertical" size={16} className="text-slate-400" />
-                    </button>
-                  </div>
-                  {openVetMenuId === v.id && (
-                    <div className="absolute right-8 top-10 w-36 bg-white border border-slate-100 rounded-xl shadow-xl z-50 overflow-hidden animate-in" onClick={e => e.stopPropagation()}>
-                      <button onClick={() => { setEditingVetId(v.id); setEditVetName(v.name); setEditVetPhone(v.phone); setEditVetLimit(v.limit); }} className="w-full p-3 text-left text-[11px] font-bold border-b flex items-center gap-2 active:bg-slate-50"><Icon name="edit" size={14}/> Düzenle</button>
-                      <button onClick={() => {
-                          if (stats[v.id]?.balance !== 0) { setConfirmDelete({ open:true, type:'alert', message:'Bakiyesi olan müşteri silinemez.' }); return; }
-                          setConfirmDelete({ 
-                            open: true, type: 'vet', id: v.id, 
-                            message: `${v.name} müşterisini silmek istediğine emin misin?`,
-                            onConfirm: () => { setVets(vets.filter(x => x.id !== v.id)); setTransactions(transactions.filter(t => t.vetId == v.id)); }
-                          });
-                      }} className="w-full p-3 text-left text-[11px] font-bold text-rose-500 flex items-center gap-2 active:bg-rose-50"><Icon name="trash" size={14}/> Sil</button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <p className={`font-black text-base ${stats.map[v.id]?.balance < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{stats.map[v.id]?.balance > 0 ? `+${stats.map[v.id].balance}` : stats.map[v.id]?.balance}</p>
+                      <button onClick={(e) => { e.stopPropagation(); setOpenVetMenuId(v.id); }} className="p-2 active:bg-slate-200 rounded-full"><Icon name="more-vertical" size={20} className="text-slate-400" /></button>
                     </div>
-                  )}
-                </div>
-              ))}
+                    {openVetMenuId === v.id && (
+                      <div className="absolute right-12 top-12 w-40 bg-white border border-slate-100 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in" onClick={handleMenuClick}>
+                        <button onClick={() => { setEditingVetId(v.id); setEditVetName(v.name); setEditVetPhone(v.phone); }} className="w-full p-4 text-left text-xs font-bold border-b flex items-center gap-3 active:bg-slate-50 transition-colors"><Icon name="pencil" size={16}/> Düzenle</button>
+                        <button onClick={() => {
+                            if (stats.map[v.id]?.balance !== 0) { setConfirmDelete({ open:true, type:'alert', message:'Bakiyesi olan veteriner silinemez.' }); return; }
+                            setConfirmDelete({ open: true, type: 'vet', id: v.id, message: `${v.name} silinecek?`, onConfirm: () => { setVets(vets.filter(x => x.id !== v.id)); setTransactions(transactions.filter(t => t.vetId !== v.id)); } });
+                        }} className="w-full p-4 text-left text-xs font-bold text-rose-500 flex items-center gap-3 active:bg-rose-50 transition-colors"><Icon name="trash-2" size={16}/> Sil</button>
+                      </div>
+                    )}
+                  </ListItem>
+                ))
+              }
+              {filteredVetsRaw.length > visibleVets && (
+                <button onClick={() => setVisibleVets(v => v + 50)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-500 text-sm active-tap mt-2">
+                   Daha Fazla Göster
+                </button>
+              )}
             </div>
           )}
 
           {/* GEÇMİŞ TAB */}
           {activeTab === 'history' && (
-            <div className="space-y-2 animate-in text-left">
-              {transactions.slice().reverse().map(t => (
-                <div key={t.id} className="p-3 bg-white border border-slate-100 rounded-xl flex items-center justify-between shadow-sm relative">
-                  <div className="flex items-center gap-3 overflow-hidden text-left">
-                    <div className={`p-1.5 rounded-lg shrink-0 ${t.qty > 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                      <Icon name={t.qty > 0 ? "arrow-up-right" : "arrow-down-left"} size={16} />
+            <div className="space-y-3 animate-in">
+              <div className="mb-4">
+                <input value={historySearch} onChange={e => setHistorySearch(e.target.value)} placeholder="Veteriner veya boğa ara..." className="w-full p-4 bg-slate-100 rounded-2xl font-bold text-sm outline-none border-2 border-transparent focus:border-indigo-100 transition-all shadow-inner" />
+              </div>
+              {filteredHistory.length === 0 ? (<div className="text-center p-16 text-slate-300"><Icon name="clipboard-list" size={48} className="mx-auto opacity-20" /><p className="text-xs font-bold uppercase tracking-widest">İşlem yok</p></div>) : 
+                filteredHistory.map(t => (
+                  <div key={t.id} className="p-4 bg-white border border-slate-100 rounded-2xl flex items-center justify-between shadow-sm relative animate-in">
+                    <div className="flex items-center gap-4 overflow-hidden text-left">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${t.qty < 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}><Icon name={t.qty < 0 ? "minus" : "plus"} size={18} /></div>
+                      <div className="truncate">
+                        <p className="text-sm font-extrabold text-slate-800 truncate uppercase leading-none mb-1">{vets.find(v => v.id == t.vetId)?.name || '??'}</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase truncate tracking-tight">{t.product} • {t.date}</p>
+                      </div>
                     </div>
-                    <div className="truncate">
-                      <p className="text-xs font-bold text-slate-800 truncate uppercase">{vets.find(v => v.id == t.vetId)?.name || 'Bilinmeyen'}</p>
-                      <p className="text-[9px] text-slate-400 font-bold uppercase truncate">{t.product} • {t.date}</p>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <p className={`text-base font-black ${t.qty < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{t.qty > 0 ? `+${t.qty}` : t.qty}</p>
+                      <button onClick={(e) => { e.stopPropagation(); setOpenTransMenuId(t.id); }} className="p-2 active:bg-slate-100 rounded-full transition-colors"><Icon name="more-vertical" size={20} className="text-slate-400" /></button>
                     </div>
+                    {openTransMenuId === t.id && (
+                      <div className="absolute right-12 top-12 w-40 bg-white border border-slate-100 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in" onClick={handleMenuClick}>
+                        <button onClick={() => openEditTransaction(t)} className="w-full p-4 text-left text-xs font-bold border-b flex items-center gap-3 active:bg-slate-50 transition-colors"><Icon name="pencil" size={16}/> Düzenle</button>
+                        <button onClick={() => setConfirmDelete({ open: true, type: 'trans', id: t.id, message: "Silinsin mi?", onConfirm: () => deleteTransaction(t.id) })} className="w-full p-4 text-left text-xs font-bold text-rose-500 flex items-center gap-3 active:bg-rose-50 transition-colors"><Icon name="trash-2" size={16}/> Sil</button>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <p className={`text-sm font-black ${t.qty > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{t.qty > 0 ? `+${t.qty}` : t.qty}</p>
-                    <button onClick={(e) => { e.stopPropagation(); setOpenTransMenuId(openTransMenuId === t.id ? null : t.id); }} className="p-1">
-                      <Icon name="more-vertical" size={16} className="text-slate-400" />
-                    </button>
-                  </div>
-                  {openTransMenuId === t.id && (
-                    <div className="absolute right-8 top-10 w-36 bg-white border border-slate-100 rounded-xl shadow-xl z-50 overflow-hidden animate-in" onClick={e => e.stopPropagation()}>
-                      <button onClick={() => openEditTransaction(t)} className="w-full p-3 text-left text-[11px] font-bold border-b flex items-center gap-2 active:bg-slate-50"><Icon name="edit" size={14}/> Düzenle</button>
-                      <button onClick={() => {
-                        setConfirmDelete({ open: true, type: 'trans', id: t.id, message: "İşlemi silmek istiyor musunuz?", onConfirm: () => deleteTransaction(t.id) });
-                      }} className="w-full p-3 text-left text-[11px] font-bold text-rose-500 flex items-center gap-2 active:bg-rose-50"><Icon name="trash" size={14}/> Sil</button>
-                    </div>
-                  )}
-                </div>
-              ))}
+                ))
+              }
+              {filteredHistoryRaw.length > visibleHistory && (
+                <button onClick={() => setVisibleHistory(v => v + 50)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-500 text-sm active-tap mt-2">
+                   Daha Fazla Göster
+                </button>
+              )}
             </div>
           )}
         </main>
 
-        <nav className="bg-white border-t border-slate-100 flex justify-around items-center px-2 z-50 shadow-lg shrink-0">
-          {[{id:'home', i:'layout-dashboard'}, {id:'stock', i:'package'}, {id:'vets', i:'users'}, {id:'history', i:'clipboard-list'}].map(t => (
-            <button key={t.id} onClick={() => {setActiveTab(t.id); setSelectedVetId(null); setSelectedProductId(null);}} className={`p-4 transition-all ${activeTab === t.id && !selectedVetId && !selectedProductId ? 'tab-active' : 'text-slate-300'}`}>
-              <Icon name={t.i} size={24} />
-            </button>
+        <nav className="bg-white border-t border-slate-100 flex justify-around items-center px-4 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.03)] shrink-0">
+          {[{id:'home', i:'layout-grid'}, {id:'stock', i:'box'}, {id:'vets', i:'users'}, {id:'history', i:'calendar'}].map(t => (
+            <button key={t.id} onClick={() => {setActiveTab(t.id); setSelectedVetId(null); setSelectedProductId(null);}} className={`p-5 transition-all ${activeTab === t.id && !selectedVetId && !selectedProductId ? 'tab-active' : 'text-slate-300'}`}><Icon name={t.i} size={26} /></button>
           ))}
         </nav>
 
-        {/* ONAY MODALI */}
+        {/* MODALLAR */}
         {confirmDelete.open && (
-          <div className="fixed inset-0 bg-slate-900/60 z-[200] flex items-center justify-center p-6 backdrop-blur-sm animate-in">
-            <div className="bg-white w-full rounded-2xl p-6 shadow-2xl max-w-sm">
-              <div className={`w-12 h-12 ${confirmDelete.type === 'alert' ? 'bg-amber-50 text-amber-500' : 'bg-rose-50 text-rose-500'} rounded-full flex items-center justify-center mb-4 mx-auto`}>
-                <Icon name={confirmDelete.type === 'alert' ? "alert-circle" : "alert-triangle"} size={28} />
-              </div>
-              <h3 className="text-center font-black text-slate-800 mb-2">{confirmDelete.type === 'alert' ? 'Bilgi' : 'Onay'}</h3>
-              <p className="text-center text-slate-500 text-xs leading-relaxed mb-6">{confirmDelete.message}</p>
+          <div className="fixed inset-0 bg-slate-900/60 z-[200] flex items-center justify-center p-8 backdrop-blur-sm animate-in">
+            <div className="bg-white w-full rounded-3xl p-8 shadow-2xl max-sm:w-[90%] text-center">
+              <div className={`w-16 h-16 ${confirmDelete.type === 'alert' ? 'bg-amber-50 text-amber-500' : 'bg-rose-50 text-rose-500'} rounded-[2rem] flex items-center justify-center mb-5 mx-auto`}><Icon name={confirmDelete.type === 'alert' ? "info" : "alert-circle"} size={32} /></div>
+              <h3 className="font-black text-slate-800 mb-2 text-lg uppercase tracking-tight">{confirmDelete.type === 'alert' ? 'BİLGİ' : 'DİKKAT'}</h3>
+              <p className="text-slate-500 text-sm leading-relaxed mb-8">{confirmDelete.message}</p>
               <div className="flex gap-3">
-                <button onClick={() => setConfirmDelete({ open: false })} className="flex-1 py-3 bg-slate-100 rounded-xl font-bold text-slate-500 text-xs">{confirmDelete.type === 'alert' ? 'Tamam' : 'Vazgeç'}</button>
-                {confirmDelete.type !== 'alert' && (
-                  <button onClick={() => { confirmDelete.onConfirm(); setConfirmDelete({ open: false }); }} className="flex-1 py-3 bg-rose-600 text-white rounded-xl font-black text-xs uppercase text-center">SİL</button>
-                )}
+                <button onClick={() => setConfirmDelete({ open: false })} className="flex-1 py-4 bg-slate-100 rounded-2xl font-bold text-slate-500 text-sm active:bg-slate-200 transition-colors">Vazgeç</button>
+                {confirmDelete.type !== 'alert' && <button onClick={() => { confirmDelete.onConfirm(); setConfirmDelete({ open: false }); }} className="flex-1 py-4 bg-rose-600 text-white rounded-2xl font-black text-sm uppercase shadow-lg shadow-rose-200 active:scale-95 transition-all">SİL</button>}
               </div>
             </div>
           </div>
         )}
 
-        {/* DÜZENLEME MODALLARI */}
-        {editingVetId && (
-          <div className="fixed inset-0 bg-slate-900/60 z-[150] flex items-center justify-center p-5 backdrop-blur-sm">
-            <div className="bg-white w-full rounded-2xl p-6 animate-in shadow-2xl text-left">
-              <h3 className="font-black text-slate-800 mb-4 text-sm uppercase">Müşteri Düzenle</h3>
-              <input value={editVetName} onChange={e => setEditVetName(e.target.value)} className="w-full p-3 bg-slate-100 rounded-xl mb-2 font-bold text-sm outline-none uppercase" placeholder="İsim" />
-              <div className="grid grid-cols-2 gap-2 mb-3">
-                <input value={editVetPhone} onChange={e => setEditVetPhone(e.target.value)} className="p-3 bg-slate-100 rounded-xl font-bold text-xs outline-none" placeholder="Telefon" />
-                <input type="number" value={editVetLimit} onChange={e => setEditVetLimit(e.target.value)} className="p-3 bg-slate-100 rounded-xl font-bold text-xs outline-none" placeholder="Limit" />
+        {/* BOTTOM SHEET FOR ADD TRANSACTION */}
+        {showAddForm && (
+          <div className="fixed inset-0 bg-slate-900/40 z-[100] flex items-end backdrop-blur-[2px]">
+            <div className="bg-white w-full rounded-t-[2.5rem] p-7 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] bottom-sheet max-h-[95dvh] overflow-y-auto">
+              <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-8"></div>
+              <h3 className="text-xl font-black text-slate-800 mb-6 uppercase tracking-tight text-left">{editingTransId ? 'İşlemi Düzenle' : 'Yeni Cari İşlem'}</h3>
+              <div className="space-y-5 text-left">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-widest">TARİH</label>
+                    <input type="date" className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-xs outline-none border border-slate-100 focus:bg-white focus:border-indigo-200 transition-all" value={formDate} onChange={e => setFormDate(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-widest">İŞLEM TÜRÜ</label>
+                    <div className="relative">
+                        <select className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-xs outline-none border border-slate-100 text-indigo-600 uppercase focus:bg-white focus:border-indigo-200 transition-all" value={formType} onChange={e => setFormType(e.target.value)}>
+                            <option value="borclanma">BORÇ (-)</option>
+                            <option value="odeme">BORÇ (+)</option>
+                        </select>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-40"><Icon name="chevron-down" size={14}/></div>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-widest">VETERİNER</label>
+                  <div className="relative">
+                    <select className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-xs outline-none border border-slate-100 uppercase focus:bg-white focus:border-indigo-200 transition-all" value={formVetId} onChange={e => setFormVetId(e.target.value)}>
+                        <option value="">Seçiniz</option>
+                        {sortedVets.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-40"><Icon name="chevron-down" size={14}/></div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-widest">BOĞA</label>
+                    <div className="relative">
+                        <select className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-xs outline-none border border-slate-100 uppercase focus:bg-white focus:border-indigo-200 transition-all" value={formProduct} onChange={e => setFormProduct(e.target.value)}>
+                            <option value="">Seçiniz</option>
+                            {sortedProductsList.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                        </select>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-40"><Icon name="chevron-down" size={14}/></div>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-widest">ADET / MİKTAR</label>
+                    <input type="number" inputMode="numeric" className="w-full p-4 bg-slate-50 rounded-2xl font-bold text-xs outline-none border border-slate-100 focus:bg-white focus:border-indigo-200 transition-all" placeholder="0" value={formQty} onChange={e => setFormQty(e.target.value)} />
+                  </div>
+                </div>
+                <div className="flex gap-4 pt-6">
+                  <button onClick={() => { setShowAddForm(false); setEditingTransId(null); }} className="flex-1 p-5 bg-slate-100 rounded-3xl font-bold text-slate-400 text-sm uppercase btn-touch">İptal</button>
+                  <button onClick={handleTransaction} className="flex-1 p-5 bg-indigo-600 text-white rounded-3xl font-black text-sm uppercase shadow-lg shadow-indigo-200 active:scale-95 transition-all btn-touch">{editingTransId ? 'GÜNCELLE' : 'TAMAMLA'}</button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <button onClick={() => setEditingVetId(null)} className="flex-1 p-3 bg-slate-100 rounded-xl font-bold text-xs text-slate-400">İptal</button>
+            </div>
+          </div>
+        )}
+
+        {/* QUICK ADD MODAL */}
+        {showQuickAdd && (
+          <div className="fixed inset-0 bg-slate-900/60 z-[150] flex items-center justify-center p-8 backdrop-blur-sm">
+            <div className="bg-white w-full rounded-3xl p-7 animate-in shadow-2xl text-left max-w-sm max-sm:w-[90%]">
+              <h3 className="font-black text-slate-800 mb-6 text-sm uppercase tracking-widest">{showQuickAdd === 'vet' ? 'YENİ VETERİNER' : 'YENİ BOĞA'}</h3>
+              <input autoFocus placeholder="Adı yazınız..." value={newNameInput} onChange={e => setNewNameInput(e.target.value)} className="w-full p-4 bg-slate-100 rounded-2xl mb-6 font-bold text-sm outline-none uppercase border border-slate-100 focus:bg-white focus:border-indigo-200 transition-all shadow-inner" />
+              <div className="flex gap-3">
+                <button onClick={() => {setShowQuickAdd(null); setNewNameInput('');}} className="flex-1 p-4 bg-slate-100 rounded-2xl font-bold text-xs text-slate-400">Vazgeç</button>
                 <button onClick={() => {
-                  setVets(vets.map(v => v.id === editingVetId ? { ...v, name: normalizeName(editVetName), phone: editVetPhone, limit: Number(editVetLimit) } : v));
+                  const n = normalizeName(newNameInput); if(!n) return;
+                  
+                  if (showQuickAdd === 'vet') {
+                    if (vets.some(v => v.name === n)) {
+                      setConfirmDelete({ open: true, type: 'alert', message: "Bu isimde bir veteriner zaten var!" });
+                      return;
+                    }
+                    setVets([...vets, { id:uid(), name:n, phone:'' }]);
+                  } else {
+                    if (products.some(p => p.name === n)) {
+                      setConfirmDelete({ open: true, type: 'alert', message: "Bu isimde bir boğa zaten var!" });
+                      return;
+                    }
+                    setProducts([...products, { id:uid(), name:n, stock:0 }]);
+                  }
+                  
+                  setShowQuickAdd(null); setNewNameInput('');
+                }} className="flex-1 p-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase shadow-lg active:scale-95 transition-all">EKLE</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* EDIT MODALS */}
+        {editingVetId && (
+          <div className="fixed inset-0 bg-slate-900/60 z-[150] flex items-center justify-center p-8 backdrop-blur-sm">
+            <div className="bg-white w-full rounded-3xl p-7 animate-in shadow-2xl text-left max-w-sm max-sm:w-[90%]">
+              <h3 className="font-black text-slate-800 mb-5 text-sm uppercase tracking-widest">VETERİNER DÜZENLE</h3>
+              <div className="space-y-3">
+                <input value={editVetName} onChange={e => setEditVetName(e.target.value)} className="w-full p-4 bg-slate-100 rounded-2xl font-bold text-sm outline-none uppercase border border-slate-100 focus:bg-white focus:border-indigo-200 transition-all shadow-inner" placeholder="İsim" />
+                <input value={editVetPhone} onChange={e => setEditVetPhone(e.target.value)} className="w-full p-4 bg-slate-100 rounded-2xl font-bold text-xs outline-none border border-slate-100 focus:bg-white focus:border-indigo-200 transition-all shadow-inner" placeholder="Telefon (Opsiyonel)" />
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button onClick={() => setEditingVetId(null)} className="flex-1 p-4 bg-slate-100 rounded-2xl font-bold text-xs text-slate-400">İptal</button>
+                <button onClick={() => {
+                  const n = normalizeName(editVetName);
+                  if (vets.some(v => v.id !== editingVetId && v.name === n)) {
+                    setConfirmDelete({ open: true, type: 'alert', message: "Bu isimde başka bir veteriner var!" });
+                    return;
+                  }
+                  setVets(vets.map(v => v.id === editingVetId ? { ...v, name: n, phone: editVetPhone } : v));
                   setEditingVetId(null);
-                }} className="flex-1 p-3 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase text-center">KAYDET</button>
+                }} className="flex-1 p-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase active:scale-95 shadow-lg transition-all">KAYDET</button>
               </div>
             </div>
           </div>
         )}
 
         {editingProductId && (
-          <div className="fixed inset-0 bg-slate-900/60 z-[150] flex items-center justify-center p-5 backdrop-blur-sm">
-            <div className="bg-white w-full rounded-2xl p-6 animate-in shadow-2xl text-left">
-              <h3 className="font-black text-slate-800 mb-4 text-sm uppercase">Ürün Düzenle</h3>
-              <input value={editProductName} onChange={e => setEditProductName(e.target.value)} className="w-full p-3 bg-slate-100 rounded-xl mb-3 font-bold text-sm outline-none uppercase" placeholder="Ürün Adı" />
-              <div className="flex gap-2">
-                <button onClick={() => setEditingProductId(null)} className="flex-1 p-3 bg-slate-100 rounded-xl font-bold text-xs text-slate-400">İptal</button>
+          <div className="fixed inset-0 bg-slate-900/60 z-[150] flex items-center justify-center p-8 backdrop-blur-sm">
+            <div className="bg-white w-full rounded-3xl p-7 animate-in shadow-2xl text-left max-sm:w-[90%] max-w-sm">
+              <h3 className="font-black text-slate-800 mb-5 text-sm uppercase tracking-widest">BOĞA DÜZENLE</h3>
+              <input value={editProductName} onChange={e => setEditProductName(e.target.value)} className="w-full p-4 bg-slate-100 rounded-2xl mb-6 font-bold text-sm outline-none uppercase border border-slate-100 focus:bg-white focus:border-indigo-200 transition-all shadow-inner" placeholder="Boğa Adı" />
+              <div className="flex gap-3">
+                <button onClick={() => setEditingProductId(null)} className="flex-1 p-4 bg-slate-100 rounded-2xl font-bold text-xs text-slate-400">İptal</button>
                 <button onClick={() => {
                   const oldName = products.find(p => p.id === editingProductId).name;
                   const newName = normalizeName(editProductName);
+                  if (products.some(p => p.id !== editingProductId && p.name === newName)) {
+                    setConfirmDelete({ open: true, type: 'alert', message: "Bu isimde başka bir boğa var!" });
+                    return;
+                  }
                   setProducts(products.map(p => p.id === editingProductId ? { ...p, name: newName } : p));
                   setTransactions(transactions.map(t => t.product === oldName ? { ...t, product: newName } : t));
                   setEditingProductId(null);
-                }} className="flex-1 p-3 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase text-center">KAYDET</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showQuickAdd && (
-          <div className="fixed inset-0 bg-slate-900/60 z-[150] flex items-center justify-center p-5 backdrop-blur-sm">
-            <div className="bg-white w-full rounded-2xl p-6 animate-in shadow-2xl text-left">
-              <h3 className="font-black text-slate-800 mb-4 text-sm uppercase">{showQuickAdd === 'vet' ? 'Yeni Müşteri' : 'Yeni Ürün'}</h3>
-              <input autoFocus placeholder="Adı giriniz..." value={newNameInput} onChange={e => setNewNameInput(e.target.value)} className="w-full p-3 bg-slate-100 rounded-xl mb-3 font-bold text-sm outline-none uppercase" />
-              <div className="flex gap-2">
-                <button onClick={() => setShowQuickAdd(null)} className="flex-1 p-3 bg-slate-100 rounded-xl font-bold text-xs text-slate-400">İptal</button>
-                <button onClick={() => {
-                  const n = normalizeName(newNameInput); if(!n) return;
-                  if(showQuickAdd === 'vet') setVets([...vets, { id:uid(), name:n, phone:'', limit:0 }]);
-                  else setProducts([...products, { id:uid(), name:n, stock:0 }]);
-                  setShowQuickAdd(null); setNewNameInput('');
-                }} className="flex-1 p-3 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase text-center">EKLE</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showAddForm && (
-          <div className="fixed inset-0 bg-slate-900/60 z-[100] flex items-end backdrop-blur-sm text-left">
-            <div className="bg-white w-full rounded-t-3xl p-6 shadow-2xl animate-in slide-in-from-bottom max-h-[90dvh] overflow-y-auto">
-              <h3 className="text-lg font-black text-slate-800 mb-5 uppercase tracking-tighter">{editingTransId ? 'İşlemi Güncelle' : 'Cari İşlem Gir'}</h3>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Tarih</label>
-                    <input type="date" className="w-full p-3 bg-slate-100 rounded-xl font-bold text-xs outline-none" value={formDate} onChange={e => setFormDate(e.target.value)} />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Tür</label>
-                    <select className="w-full p-3 bg-slate-100 rounded-xl font-bold text-xs outline-none text-indigo-600 uppercase" value={formType} onChange={e => setFormType(e.target.value)}>
-                        <option value="borclanma">BORÇ (+)</option>
-                        <option value="odeme">ÖDEME (-)</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Müşteri Seçin</label>
-                  <select className="w-full p-3 bg-slate-100 rounded-xl font-bold text-xs outline-none uppercase" value={formVetId} onChange={e => setFormVetId(e.target.value)}>
-                    <option value="">Seçiniz</option>
-                    {sortedVets.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-                  </select>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Ürün Seçin</label>
-                    <select className="w-full p-3 bg-slate-100 rounded-xl font-bold text-xs outline-none uppercase" value={formProduct} onChange={e => setFormProduct(e.target.value)}>
-                        <option value="">Seçiniz</option>
-                        {sortedProductsList.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Miktar</label>
-                    <input type="number" className="w-full p-3 bg-slate-100 rounded-xl font-bold text-xs outline-none" placeholder="0" value={formQty} onChange={e => setFormQty(e.target.value)} />
-                  </div>
-                </div>
-                <div className="flex gap-3 pt-4">
-                  <button onClick={() => { setShowAddForm(false); setEditingTransId(null); }} className="flex-1 p-4 bg-slate-100 rounded-2xl font-bold text-slate-400 text-sm uppercase">İptal</button>
-                  <button onClick={handleTransaction} className="flex-1 p-4 bg-indigo-600 text-white rounded-2xl font-black text-sm uppercase">{editingTransId ? 'Güncelle' : 'Tamamla'}</button>
-                </div>
+                }} className="flex-1 p-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase active:scale-95 shadow-lg transition-all">KAYDET</button>
               </div>
             </div>
           </div>
